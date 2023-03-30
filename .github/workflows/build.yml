@@ -43,3 +43,4 @@ jobs:
           token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
           files: |
             Fugu15/*.tipa
+          body: tree/master
