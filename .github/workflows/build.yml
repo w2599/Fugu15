@@ -1,0 +1,45 @@
+name: build_Release
+
+on: [workflow_dispatch]
+
+concurrency:
+  group: ${{ github.workflow }}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    outputs:
+      t_name: ${{ steps.check.outputs.t_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+         
+      - name: Install Procursus
+        uses: dhinakg/procursus-action@main
+        with:
+          packages: ldid fakeroot
+         
+      - name: Set t_name
+        id: check
+        run: |
+         echo "t_name=$(TZ=UTC-8 date +%Y_%m%d_%H_%M_%S)" >> $GITHUB_OUTPUT
+    
+      - name: Log t_name
+        run: |
+         echo ${{ steps.check.outputs.t_name }}
+
+      - name: Build tipa
+        run: |
+          sudo security import Exploits/fastPath/arm.pfx -k /Library/Keychains/System.keychain -P password -A
+          make
+      
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.check.outputs.t_name }}
+          token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
+          files: |
+            Fugu15/*.tipa
