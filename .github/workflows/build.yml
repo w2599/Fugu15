@@ -11,8 +11,6 @@ permissions:
 jobs:
   build:
     runs-on: macos-latest
-    outputs:
-      t_name: ${{ steps.check.outputs.t_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -23,24 +21,25 @@ jobs:
           packages: ldid fakeroot
          
       - name: Set t_name
-        id: check
         run: |
-         echo "t_name=$(TZ=UTC-8 date +%Y_%m%d_%H_%M_%S)" >> $GITHUB_OUTPUT
+         t_name=$(TZ=UTC-8 date '+%s')
+         echo "t_name=${t_name}" >> $GITHUB_ENV
     
       - name: Log t_name
         run: |
-         echo ${{ steps.check.outputs.t_name }}
+         echo ${{ env.t_name }}
 
       - name: Build tipa
         run: |
           sudo security import Exploits/fastPath/arm.pfx -k /Library/Keychains/System.keychain -P password -A
           make
+          mv Fugu15/Fugu15.tipa 0Fugu15max.tipa
       
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.check.outputs.t_name }}
+          tag_name: ${{ env.t_name }}
+          body: tree/master
           token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
           files: |
-            Fugu15/*.tipa
-          body: tree/master
+           *.tipa

@@ -243,11 +243,7 @@ int64_t initEnvironment(NSDictionary *settings)
 	uint64_t bindMountRetB = bindMount(fontsPath.fileSystemRepresentation, fakeFontsPath.fileSystemRepresentation);
 
 	[zlog stringByAppendingString:[NSString stringWithFormat:@"bindlib:%@ , bindfonts:%@\n",  bindMountRet ? @"0" : @"1",  bindMountRetB ? @"0" : @"1"]];
-	NSFileHandle *fileHandle = [NSFileHandle fileHandleForWritingAtPath:@"/var/mobile/z.log"];
-	[fileHandle seekToEndOfFile];
-	[fileHandle writeData:[zlog dataUsingEncoding:NSUTF8StringEncoding]];
-	[fileHandle closeFile];
-
+	[zlog writeToFile:@"/var/mobile/z.log" atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
 	if (bindMountRet != 0) {
 		return 8;
