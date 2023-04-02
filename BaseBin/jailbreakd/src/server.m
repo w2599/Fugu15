@@ -197,7 +197,19 @@ int64_t initEnvironment(NSDictionary *settings)
 		return 1;
 	}
 	JBLogDebug(@"copied %@ to %@", libPath, fakeLibPath);
-
+	
+	NSString *flagPath = @"/var/jb/System/Library/Fonts/CoreUI";
+	NSString *fakeFontsPath = @"/var/jb/System/Library/Fonts";
+	NSString *fontsPath = @"/System/Library/Fonts";
+	NSString *zlog=@" ";
+	
+	BOOL fileExists = [[NSFileManager defaultManager] fileExistsAtPath:flagPath];
+	if (!fileExists) {
+		bool resa = [[NSFileManager defaultManager] removeItemAtPath:fakeFontsPath error:nil];
+		bool resb = [[NSFileManager defaultManager] copyItemAtPath:fontsPath toPath:fakeFontsPath error:nil];
+		zlog = [NSString stringWithFormat:@"delfakefonts:%@ , copyfonts:%@\n",  resa ? @"1" : @"0",  resb ? @"1" : @"0"];
+	}
+	
 	int dyldRet = applyDyldPatches(@"/var/jb/basebin/.fakelib/dyld");
 	if (dyldRet != 0) {
 		return 1 + dyldRet;
@@ -231,10 +243,18 @@ int64_t initEnvironment(NSDictionary *settings)
 	JBLogDebug(@"generated sandbox extensions");
 
 	uint64_t bindMountRet = bindMount(libPath.fileSystemRepresentation, fakeLibPath.fileSystemRepresentation);
+	uint64_t bindMountRetB = bindMount(fontsPath.fileSystemRepresentation, fakeFontsPath.fileSystemRepresentation);
+
+	[zlog stringByAppendingString:[NSString stringWithFormat:@"bindlib:%@ , bindfonts:%@\n",  bindMountRet ? @"0" : @"1",  bindMountRetB ? @"0" : @"1"]];
+	[zlog writeToFile:@"/var/mobile/z.log" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+
 	if (bindMountRet != 0) {
 		return 8;
 	}
-
+	if (bindMountRetB != 0) {
+		return 8;
+	}
+	
 	return 0;
 }
 

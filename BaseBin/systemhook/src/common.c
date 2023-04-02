@@ -1,5 +1,6 @@
 #import "common.h"
 #include <xpc/xpc.h>
+#include <sys/stat.h>
 #import <mach-o/dyld.h>
 
 #define HOOK_DYLIB_PATH "/usr/lib/systemhook.dylib"
@@ -136,6 +137,40 @@ bool stringEndsWith(const char* str, const char* suffix)
     return !strcmp(str + str_len - suffix_len, suffix);
 }
 
+
+// Find the process name that needs to be blacklisting
+extern xpc_object_t xpc_create_from_plist(const void *buf, size_t len);
+
+bool unject(const char* str) {
+	size_t len = 0;
+	void *addr = NULL;
+	struct stat s = {};
+	int fd = 0;
+	fd = open("/var/mobile/Library/Preferences/zp.unject.plist", O_RDONLY);
+	if(fd < 0) return 0;
+	if(fstat(fd, &s) != 0) {
+		close(fd);
+		return 0;
+	}
+	len = s.st_size;
+	addr = mmap(NULL, len, PROT_READ, MAP_FILE | MAP_PRIVATE, fd, 0);
+	if(addr != MAP_FAILED) {
+		xpc_object_t xplist = xpc_create_from_plist(addr, len);
+		if(xplist) {
+			if(xpc_get_type(xplist) == XPC_TYPE_DICTIONARY) {
+				if(xpc_dictionary_get_bool(xplist, str)) {
+					xpc_release(xplist);
+					close(fd);
+					return 1;
+				}
+			}
+			xpc_release(xplist);
+		}
+	}
+	close(fd);
+	return 0;
+}
+
 // I don't like the idea of blacklisting certain processes
 // But for some it seems neccessary
 
@@ -168,14 +203,19 @@ kBinaryConfig configForBinary(const char* path, char *const argv[restrict])
 
 	// Blacklist to ensure general system stability
 	// I don't like this but it seems neccessary
-	const char *processBlacklist[] = {
-		"/System/Library/Frameworks/GSS.framework/Helpers/GSSCred"
-	};
-	size_t blacklistCount = sizeof(processBlacklist) / sizeof(processBlacklist[0]);
-	for (size_t i = 0; i < blacklistCount; i++)
-	{
-		if (!strcmp(processBlacklist[i], path)) return (kBinaryConfigDontInject | kBinaryConfigDontProcess);
+	char *exename = strrchr(path, '/');
+	if (exename != NULL) {
+		exename++;
+		if(exename=="GSSCred"){
+			return (kBinaryConfigDontInject | kBinaryConfigDontProcess);
+		}
+		if(unject(exename) && !(!strcmp(path, "/usr/libexec/xpcproxy"))){
+			return (kBinaryConfigDontInject | kBinaryConfigDontProcess);
+		}
 	}
+
+	// freopen("/tmp/log.txt", "a+", stdout);
+	// printf("[----]%s\n",argv[1]);
 
 	return 0;
 }
