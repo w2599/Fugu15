@@ -40,6 +40,8 @@ int main(int argc, char* argv[])
 			printf("Update failed with error code %lld\n", result);
 			return result;
 		}
+	} else if (!strcmp(cmd, "OTAFake")) {
+		jbdOTAFakePath();
 	}
 
 	return 0;
