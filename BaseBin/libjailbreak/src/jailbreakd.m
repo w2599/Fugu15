@@ -163,6 +163,18 @@ int64_t jbdInitEnvironment(NSDictionary *settings)
 	return xpc_dictionary_get_int64(reply, "result");
 }
 
+void jbdOTAFakePath(void)
+{
+	xpc_object_t message = xpc_dictionary_create_empty();
+	xpc_dictionary_set_uint64(message, "id", JBD_MSG_OTAFAKEPATH);
+
+	// TODO: pass settings
+	//xpc_dictionary_set_string(message, "source", source);
+	//xpc_dictionary_set_string(message, "target", target);
+
+	sendJBDMessage(message);
+}
+
 int64_t jbdUpdateFromTIPA(NSString *pathToTIPA)
 {
 	NSString *standardizedPath = [[pathToTIPA stringByResolvingSymlinksInPath] stringByStandardizingPath];

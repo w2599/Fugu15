@@ -108,22 +108,16 @@ struct JailbreakView: View {
                 .padding([.leading, .trailing])
                 .font(.footnote)
                 .opacity(0.4)
-        }.alert(isPresented: $showAlert) {
-            switch activeAlert {
-                case .jailbroken:
-                    return  Alert(title: Text("Success"), message: Text("Jailbreak initialized. A userspace reboot is needed to finalize it!"), dismissButton: .default(Text("Userspace Reboot"), action: {
-                        execCmd(args: ["/var/jb/usr/bin/launchctl", "reboot", "userspace"])
-                    }))
-                case .hidden:
-                    return Alert(title: Text("Environment Hidden"), message: Text("Jailbreak environment fully hidden until the next rejailbreak"), dismissButton: .default(Text("OK")))
-                case .uninstall:
-                    return Alert(title: Text("Uninstall"),
-                        message: Text("Are you sure you want to uninstall the jailbreak environment? This will delete everything about your jailbreak including packages, tweaks and apps."),
-                        primaryButton: .cancel(),
-                        secondaryButton: .default(Text("Uninstall Environment")) {
-                            execCmd(args: [CommandLine.arguments[0], "uninstall_environment"])
-                    })
-            }  
+        }.alert(isPresented: $showSuccessMsg) {
+            Alert(  title: Text("Success"),
+                    message: Text("Post environment started successfully\n O K = reboot userspace\n cancel = nothing!!!"),
+                primaryButton: .default(
+                    Text("O K"), action: {
+			execCmd(args: ["/var/jb/usr/bin/launchctl","reboot","userspace"])
+                    }
+                ),
+                secondaryButton: .cancel()
+            )
         }
     }
     

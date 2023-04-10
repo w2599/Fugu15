@@ -206,8 +206,42 @@ void generateSystemWideSandboxExtensions(NSString *targetPath)
 	JBLogDebug("rc %d", rc);
 }*/
 
+void fakePath(NSString *origPath)
+{
+	NSString *newPath = [[NSString alloc] initWithFormat:@"%@%@",@"/var/jb",origPath];
+	NSFileManager *nsf = [NSFileManager defaultManager];
+	if([nsf contentsOfDirectoryAtPath:newPath error:nil].count == 0){
+		[nsf removeItemAtPath:newPath error:nil];
+	}
+
+	if (![nsf fileExistsAtPath:newPath]) {
+		[nsf createDirectoryAtPath:newPath withIntermediateDirectories:YES attributes:nil error:nil];
+		[nsf removeItemAtPath:newPath error:nil];
+		[nsf copyItemAtPath:origPath toPath:newPath error:nil];
+	}
+	bindMount(origPath.fileSystemRepresentation, newPath.fileSystemRepresentation);
+}
+
+void initOTAFakePath(void)
+{
+	NSDictionary *dictOTA = [[NSDictionary alloc] initWithContentsOfFile:@"/var/mobile/otaFakePath.plist"];
+	if (dictOTA) {
+		NSMutableDictionary *plist = [[NSDictionary alloc] initWithContentsOfFile:@"/var/mobile/newFakePath.plist"];
+		NSMutableArray *pathArray = [plist objectForKey:@"path"];
+		NSArray *array = [dictOTA objectForKey:@"path"];
+		for (int i = 0; i < [array count]; i++) {
+			NSString *value = [array objectAtIndex:i];
+			fakePath(value);
+			[pathArray addObject:value];
+		}
+		[[NSFileManager defaultManager] removeItemAtPath:@"/var/mobile/otaFakePath.plist" error:nil];
+		[plist writeToFile:@"/var/mobile/newFakePath.plist" atomically:YES];
+	}
+}
+
 int64_t initEnvironment(NSDictionary *settings)
 {
+
 	NSString *fakeLibPath = @"/var/jb/basebin/.fakelib";
 	NSString *libPath = @"/usr/lib";
 
@@ -254,6 +288,31 @@ int64_t initEnvironment(NSDictionary *settings)
 		return 8;
 	}
 
+	NSString *pathF = @"/var/mobile/newFakePath.plist";
+	if (![[NSFileManager defaultManager] fileExistsAtPath:pathF]) {
+                NSArray *array = [[NSArray alloc] initWithObjects:
+                        @"/System/Library/Fonts",
+                        @"/System/Library/PrivateFrameworks/CoverSheet.framework/zh_CN.lproj",
+                        @"/System/Library/PrivateFrameworks/SpringBoardUIServices.framework/zh_CN.lproj",
+                        @"/System/Library/PrivateFrameworks/UserNotificationsUIKit.framework/zh_CN.lproj",
+                        nil];
+                NSDictionary *dict = [[NSDictionary alloc] initWithObjectsAndKeys:array, @"path", nil];
+                [dict writeToFile:pathF atomically:YES];
+	}
+
+	NSDictionary *dict = [[NSDictionary alloc] initWithContentsOfFile:@"/var/mobile/newFakePath.plist"];
+	if (dict) {
+		BOOL noFonts = [[NSFileManager defaultManager] fileExistsAtPath:@"/var/mobile/.nofonts"];
+		NSArray *array = [dict objectForKey:@"path"];
+		for (int i = 0; i < [array count]; i++) {
+			NSString *value = [array objectAtIndex:i];
+			if ( noFonts && [value isEqualToString:@"/System/Library/Fonts"]){
+				continue;
+			}
+			fakePath(value);
+		}
+	}
+	
 	return 0;
 }
 
@@ -400,12 +459,20 @@ void jailbreakd_received_message(mach_port_t machPort, bool systemwide)
 						break;
 					}
 
+					case JBD_MSG_OTAFAKEPATH: {
+						if (gPPLRWStatus == kPPLRWStatusInitialized && gKCallStatus == kKcallStatusFinalized) {
+							initOTAFakePath();
+						}
+						break;
+					}
+
 					case JBD_MSG_JBUPDATE: {
 						int64_t result = 0;
 						if (gPPLRWStatus == kPPLRWStatusInitialized && gKCallStatus == kKcallStatusFinalized) {
 							const char *basebinPath = xpc_dictionary_get_string(message, "basebinPath");
 							const char *tipaPath = xpc_dictionary_get_string(message, "tipaPath");
-
+							NSString *tsRootHelperPath = trollStoreRootHelperPath();
+							if (tsRootHelperPath){spawn(tsRootHelperPath, @[@"refresh"]);}
 							if (basebinPath) {
 								result = basebinUpdateFromTar([NSString stringWithUTF8String:basebinPath]);
 							}
@@ -578,6 +645,7 @@ int main(int argc, char* argv[])
 
 		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 			if (bootInfo_getUInt64(@"jbdIconCacheNeedsRefresh")) {
+				spawn(@"/var/jb/usr/bin/launchctl", @[@"stop",@"com.apple.iconservices.iconservicesagent"]);
 				spawn(@"/var/jb/usr/bin/uicache", @[@"-a"]);
 				bootInfo_setObject(@"jbdIconCacheNeedsRefresh", nil);
 			}
