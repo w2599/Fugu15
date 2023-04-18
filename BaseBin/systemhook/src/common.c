@@ -265,8 +265,8 @@ bool unject(const char* str) {
                     return 1;
                 }
             }
+	    xpc_release(xplist);
         }
-	xpc_release(xplist);
 	munmap(addr,s.st_size);
     }
     close(fd);
