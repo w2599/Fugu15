@@ -54,6 +54,10 @@ enum JBStatus {
     }
 }
 
+enum ActiveAlert {
+    case jailbroken, hidden, uninstall
+}
+
 struct JailbreakView: View {
     @Binding var logText: String
     
@@ -61,17 +65,32 @@ struct JailbreakView: View {
     @State var textStatus1      = "Status: Not running"
     @State var textStatus2      = ""
     @State var textStatus3      = ""
-    @State var showSuccessMsg   = false
+    @State var showAlert                = false
+    @State var activeAlert: ActiveAlert = .jailbroken
     
     var body: some View {
         VStack {
             Button(status.text(), action: {
                 status = .inProgress
-                
                 DispatchQueue(label: "Fugu15").async {
                     launchExploit()
                 }
             })
+            .contextMenu {
+                Button(action: {
+                    execCmd(args: [CommandLine.arguments[0], "hide_environment"])
+                    activeAlert = .hidden
+                    showAlert = true
+                }, label: {
+                    Label("Hide Environment", systemImage: "eye.slash")
+                })
+                Button(role: .destructive, action: {
+                    activeAlert = .uninstall
+                    showAlert = true
+                }, label: {
+                    Label("Uninstall Environment", systemImage: "trash")
+                })
+            }
                 .padding()
                 .background(status.color())
                 .cornerRadius(10)
@@ -135,7 +154,8 @@ struct JailbreakView: View {
             DispatchQueue.main.async {
                 statusUpdate("Status: Done!")
                 status = .done
-                showSuccessMsg = true
+                activeAlert = .jailbroken
+                showAlert = true
             }
         } catch {
             DispatchQueue.main.async {
