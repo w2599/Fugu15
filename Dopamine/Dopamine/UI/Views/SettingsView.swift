@@ -21,6 +21,11 @@ struct SettingsView: View {
     
     @State var mobilePasswordChangeAlertShown = false
     @State var mobilePasswordInput = "alpine"
+    @AppStorage("enableMount", store: dopamineDefaults()) var enableMount: Bool = false
+    @AppStorage("enableRebuildJB", store: dopamineDefaults()) var enableRebuildJB: Bool = false
+    @State var mountPathAlertShown = false
+    @State var mountPathInput = ""
+    
     
     @State var removeJailbreakAlertShown = false
     @State var isSelectingPackageManagers = false
@@ -49,14 +54,34 @@ struct SettingsView: View {
                                     }
                                 }
                             if !isJailbroken() {
+                                Toggle("Options_Mount_Path", isOn: $enableMount)
+                                Toggle("Options_Rebuild_JailBreak", isOn: $enableRebuildJB)
                                 Toggle("Settings_iDownload", isOn: $enableiDownload)
                                 Toggle("Settings_Verbose_Logs", isOn: $verboseLogs)
-                                    .minimumScaleFactor(0.5)
+                                
                             }
                         }
                         if isBootstrapped() {
                             VStack {
                                 if isJailbroken() {
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        mountPathAlertShown = true
+                                    }) {
+                                        HStack {
+                                            Image(systemName: "doc")
+                                            Text("Button_Set_Mount_Path")
+                                                .lineLimit(1)
+                                        }
+                                        .padding(8)
+                                        .frame(maxWidth: .infinity)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(Color.white.opacity(0.25), lineWidth: 0.5)
+                                        )
+                                    }
+                                    .padding(.bottom)
+
                                     Button(action: {
                                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                         mobilePasswordChangeAlertShown = true
@@ -173,6 +198,11 @@ struct SettingsView: View {
                     }
                     
                     ZStack {}
+                        .textFieldAlert(isPresented: $mountPathAlertShown) { () -> TextFieldAlert in
+                            TextFieldAlert(title: NSLocalizedString("Mount_Path_Alert_Shown_Title", comment: ""), message: "", text: Binding<String?>($mountPathInput), onSubmit: {
+                                newMountPath(newPath: mountPathInput)
+                            })
+                        }
                         .textFieldAlert(isPresented: $mobilePasswordChangeAlertShown) { () -> TextFieldAlert in
                             TextFieldAlert(title: NSLocalizedString("Popup_Change_Mobile_Password_Title", comment: ""), message: NSLocalizedString("Popup_Change_Mobile_Password_Message", comment: ""), text: Binding<String?>($mobilePasswordInput), onSubmit: {
                                 changeMobilePassword(newPassword: mobilePasswordInput)

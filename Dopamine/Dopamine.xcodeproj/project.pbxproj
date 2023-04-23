@@ -46,7 +46,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		0C5D3B0829F2D5C7002924C0 /* zh_CN */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = zh_CN; path = zh_CN.lproj/Localizable.strings; sourceTree = "<group>"; };
 		0C5D3B0929F2DA27002924C0 /* zh_HK */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = zh_HK; path = zh_HK.lproj/Localizable.strings; sourceTree = "<group>"; };
 		0C5D3B0A29F2DA3C002924C0 /* zh_TW */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = zh_TW; path = zh_TW.lproj/Localizable.strings; sourceTree = "<group>"; };
 		1502A4082891B03F0011CB6E /* Dopamine.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dopamine.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -328,7 +327,6 @@
 				nl,
 				uk,
 				sv,
-				zh_CN,
 				zh_HK,
 				zh_TW,
 				kk,
@@ -419,7 +417,6 @@
 				938DADEF29F2FCE400C37952 /* nl */,
 				21AFE72F29F32AF8008B4B4C /* uk */,
 				21AFE73029F33538008B4B4C /* sv */,
-				0C5D3B0829F2D5C7002924C0 /* zh_CN */,
 				0C5D3B0929F2DA27002924C0 /* zh_HK */,
 				0C5D3B0A29F2DA3C002924C0 /* zh_TW */,
 				21C376B329F43EA0001ECD18 /* kk */,

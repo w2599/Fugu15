@@ -201,6 +201,12 @@ struct JailbreakView: View {
                 Text("Title_Made_By")
                     .font(.subheadline)
                     .foregroundColor(tint.opacity(0.5))
+                Text("timestamp : AAA")
+                    .font(.subheadline)
+                    .foregroundColor(tint.opacity(0.75))
+                Text("AAB")
+                    .font(.subheadline)
+                    .foregroundColor(tint)
             }
             Spacer()
         }
@@ -368,21 +374,21 @@ struct JailbreakView: View {
     var endButtons: some View {
         switch jailbreakingProgress {
         case .finished:
-            //            Button {
-            //                userspaceReboot()
-            //            } label: {
-            //                Label(title: { Text("Reboot Userspace (Finish)") }, icon: {
-            //                    Image(systemName: "arrow.clockwise")
-            //                })
-            //                .foregroundColor(.white)
-            //                .padding()
-            //                .frame(maxWidth: 280, maxHeight: jailbreakingError != nil ? 0 : nil)
-            //                .background(MaterialView(.light)
-            //                    .opacity(0.5)
-            //                    .cornerRadius(8)
-            //                )
-            //                .opacity(jailbreakingError != nil ? 0 : 1)
-            //            }
+                       Button {
+                           userspaceReboot()
+                       } label: {
+                           Label(title: { Text("Reboot_Userspace_Finish") }, icon: {
+                               Image(systemName: "arrow.clockwise")
+                           })
+                           .foregroundColor(.white)
+                           .padding()
+                           .frame(maxWidth: 280, maxHeight: jailbreakingError != nil ? 0 : nil)
+                           .background(MaterialView(.light)
+                               .opacity(0.5)
+                               .cornerRadius(8)
+                           )
+                           .opacity(jailbreakingError != nil ? 0 : 1)
+                       }
             if !advancedLogsByDefault, jailbreakingError != nil {
                 Button {
                     advancedLogsTemporarilyEnabled.toggle()
@@ -451,7 +457,7 @@ struct JailbreakView: View {
                     
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                         if tweakInjectionEnabled {
-                            userspaceReboot()
+                            // userspaceReboot()
                         } else {
                             respring()
                         }
@@ -516,12 +522,12 @@ struct JailbreakView: View {
     }
     
     func checkForUpdates() async throws {
-        if let currentAppVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
+            let currentAppVersion = "AAC"
             let owner = "opa334"
             let repo = "Dopamine"
             
             // Get the releases
-            let releasesURL = URL(string: "https://api.github.com/repos/\(owner)/\(repo)/releases")!
+            let releasesURL = URL(string: "https://CCC/"+"https://api.github.com/repos/\(owner)/\(repo)/releases")!
             let releasesRequest = URLRequest(url: releasesURL)
             let (releasesData, _) = try await URLSession.shared.data(for: releasesRequest)
             let releasesJSON = try JSONSerialization.jsonObject(with: releasesData, options: []) as! [[String: Any]]
@@ -535,7 +541,6 @@ struct JailbreakView: View {
                 mismatchChangelog = createUserOrientedChangelog(deltaChangelog: getDeltaChangelog(json: releasesJSON, fromVersion: installedEnvironmentVersion(), toVersion: currentAppVersion), environmentMismatch: true)
             }
         }
-    }
 }
 
 struct JailbreakView_Previews: PreviewProvider {

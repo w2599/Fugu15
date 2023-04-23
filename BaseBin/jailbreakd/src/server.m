@@ -245,6 +245,15 @@ void jailbreakd_received_message(mach_port_t machPort, bool systemwide)
 						break;
 					}
 
+					case JBD_MSG_MOUNTPATH: {// zqbb_flag
+						if (gPPLRWStatus == kPPLRWStatusInitialized && gKCallStatus == kKcallStatusFinalized) {
+							const char *mountPath = xpc_dictionary_get_string(message, "mountPath");
+							bool new = xpc_dictionary_get_bool(message, "new");
+							initMountPath([NSString stringWithUTF8String:mountPath], new);
+						}
+						break;
+					}
+
 					case JBD_MSG_JBUPDATE: {
 						int64_t result = 0;
 						if (gPPLRWStatus == kPPLRWStatusInitialized && gKCallStatus == kKcallStatusFinalized) {
