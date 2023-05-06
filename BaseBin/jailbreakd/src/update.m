@@ -167,7 +167,7 @@ int basebinUpdateFromTar(NSString *basebinPath, bool rebootWhenDone)
 
 	// there is a non zero chance that the kernel is in the process of reading the
 	// trustcache page even after we removed it, so we wait a second before freeing it
-	sleep(1);
+	sleep(2);
 
 	kfree(existingTCKaddr, existingTCSize);
 
