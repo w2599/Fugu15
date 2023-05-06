@@ -114,6 +114,14 @@ func jailbreak(completion: @escaping (Error?) -> ()) {
     }
 }
 
+func removeZmount(rmpath: String) {
+    _ = execCmd(args: [CommandLine.arguments[0], "uninstall_Zmount", rmpath])
+}
+
+func removeZplist() {
+    _ = execCmd(args: [CommandLine.arguments[0], "uninstall_Zplist"])
+}
+
 func removeJailbreak() {
     dopamineDefaults().removeObject(forKey: "selectedPackageManagers")
     _ = execCmd(args: [CommandLine.arguments[0], "uninstall_environment"])
@@ -141,6 +149,16 @@ func changeMobilePassword(newPassword: String) {
     _ = execCmd(args: [dashPath, "-c", String(format: "printf \"%%s\\n\" \"\(newPassword)\" | \(pwPath) usermod 501 -h 0")])
 }
 
+func newMountPath(newPath: String) {// zqbb_flag
+    let plist = NSDictionary(contentsOfFile: "/var/mobile/newFakePath.plist")
+    let pathArray = plist?["path"] as? [String]
+    if pathArray?.firstIndex(of: newPath) == nil {
+	guard let jbctlPath = rootifyPath(path: "/basebin/jbctl") else {
+            return
+        }
+        _ = execCmd(args: [jbctlPath, "mountPath", newPath])
+    }
+}
 
 func changeEnvironmentVisibility(hidden: Bool) {
     if hidden {
