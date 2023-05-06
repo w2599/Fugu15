@@ -1,14 +1,14 @@
-"Bootstrapping" = "引导中";
+"Bootstrapping" = "正在引导";  
 
-"Button_Cancel" = "取消";
+"Button_Cancel" = "取消";   
 
-"Button_Hide_Jailbreak" = "隐藏越狱";
+"Button_Hide_Jailbreak" = "隐藏越狱";   
 
-"Button_Hide_Logs_Title" = "隐藏日志";
+"Button_Hide_Logs_Title" = "隐藏日志";  
 
 "Button_Jailbreak_Title" = "越狱";
 
-"Button_Remove_Jailbreak" = "清除越狱";
+"Button_Remove_Jailbreak" = "移除越狱";
 
 "Button_Set_Mobile_Password" = "设定 mobile 用户密码";
 
@@ -20,7 +20,7 @@
 
 "Button_Show_Logs_Title" = "显示日志";
 
-"Button_Unhide_Jailbreak" = "解除隐藏越狱";
+"Button_Unhide_Jailbreak" = "取消隐藏越狱";  
 
 "Button_Update" = "更新";
 
@@ -60,11 +60,11 @@
 
 "Initializing Environment" = "初始化环境";
 
-"Initializing System Hook" = "初始化系统 hook";
+"Initializing System Hook" = "初始化系统补丁";
 
 "Jailbreak_Done" = "完成！";
 
-"Launching kexploitd" = "启动 kexploitd";
+"Launching kexploitd" = "利用内核漏洞";
 
 "Enabling Wi-Fi" = "启用无线局域网";
 
@@ -72,11 +72,11 @@
 
 "Launching oobPCI" = "启动 oobPCI";
 
-"Loading Basebin Trustcache" = "加载 Basebin Trustcache";
+"Loading Basebin Trustcache" = "等待Basebin信任缓存";
 
-"Menu_Credits_Title" = "关于";
+"Menu_Credits_Title" = "制作人员";
 
-"Menu_Settings_Title" = "设置";
+"Menu_Settings_Title" = "设置";   
 
 "Settings" = "设置";
 
@@ -84,19 +84,19 @@
 
 "Menu_Restart_SpringBoard_Title" = "注销";
 
-"Settings_iDownload" = "iDownload";
+"Settings_iDownload" = "iDownload (开发者终端)";
 
-"Settings_Tweak_Injection" = "插件注入";
+"Settings_Tweak_Injection" = "插件注入";  
 
-"Settings_Verbose_Logs" = "详细日志";
+"Settings_Verbose_Logs" = "详细日志";   
 
-"Patchfinding" = "Patchfinding";
+"Patchfinding" = "补丁查找中";
 
 "PM_Reinstall_Done_Text" = "选中的包管理器已被重新安装";
 
-"Rebuilding TrustCache" = "重建 TrustCache";
+"Rebuilding TrustCache" = "重建信任缓存";
 
-"Refreshing Icon Cache" = "刷新图标缓存";
+"Refreshing Icon Cache" = "刷新图标缓存";  
 
 "Settings_Footer_Device_Bootstrapped" = "设备已安装越狱环境";
 
@@ -104,23 +104,23 @@
 
 "Starting jailbreakd" = "启动 jailbreakd";
 
-"Starting Launch Daemons" = "启动 Launch Daemons";
+"Starting Launch Daemons" = "加载启动项";
 
 "Status_Title_Jailbreaking" = "越狱中";
 
-"Status_Title_Jailbroken" = "已越狱";
+"Status_Title_Jailbroken" = "已越狱";  
 
 "Status_Title_Select_Package_Managers" = "选择包管理器（越狱商店）";
 
-"Status_Title_Unsuccessful" = "失败";
+"Status_Title_Unsuccessful" = "未成功";
 
 "Success_Rate %@%% (%lld/%lld)" = "成功率：%@%% (%lld/%lld)";
 
 "Title_Changelog" = "变更日志";
 
-"Title_Made_By" = "作者：opa334, évelyne；UI: sourceloc\n基于 Fugu15";
+"Title_Made_By" = "由opa334, évelyne制作\nUI设计由sourceloc完成\n基于Fugu15";
 
-"Title_Supported_iOS_Versions" = "iOS 15.0 - 15.4.1 | A12 - A15, M1";
+"Title_Supported_iOS_Versions" = "支持iOS 15.0 - 15.4.1 | A12 - A15,M1";
 
 "Update_Log_Hint_Scrollable" = "滚动查看日志";
 
@@ -163,3 +163,17 @@
 "Reboot_Userspace_Finish" = "重启用户空间";
 
 "Restarting Userspace" = "正在重启用户空间";
+
+"Options_Mount_Path" = "自定义挂载";
+
+"Button_Remove_zplist" = "重置zp相关配置";
+
+"Settings_Remove_Zplist_Alert_Title" = "重置挂载目录和屏蔽注入的配置文件";
+
+"Alert_Button_Zplist" = "了解";
+
+"Reboot_Userspace_Finish" = "重启用户空间";
+
+"Mount_Path_Alert_Shown_Title" = "请输入需要挂载的目录";
+
+"Button_Set_Mount_Path" = "新增挂载目录";

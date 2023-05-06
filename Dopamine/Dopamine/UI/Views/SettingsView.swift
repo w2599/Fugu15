@@ -21,6 +21,11 @@ struct SettingsView: View {
     
     @State var mobilePasswordChangeAlertShown = false
     @State var mobilePasswordInput = "alpine"
+    @AppStorage("enableMount", store: dopamineDefaults()) var enableMount: Bool = false
+    @State var mountPathAlertShown = false
+    @State var mountPathInput = ""
+    @State var removeZplistAlertShown = false
+    
     
     @State var removeJailbreakAlertShown = false
     @State var isSelectingPackageManagers = false
@@ -49,9 +54,10 @@ struct SettingsView: View {
                                     }
                                 }
                             if !isJailbroken() {
+                                Toggle("Options_Mount_Path", isOn: $enableMount)
                                 Toggle("Settings_iDownload", isOn: $enableiDownload)
                                 Toggle("Settings_Verbose_Logs", isOn: $verboseLogs)
-                                    .minimumScaleFactor(0.5)
+                                
                             }
                         }
                         if isBootstrapped() {
@@ -143,6 +149,48 @@ struct SettingsView: View {
                                         .onLongPressGesture(minimumDuration: 3, perform: {
                                             easterEgg.toggle()
                                         })
+                                    Divider()
+                                        .colorInvert()
+                                        .padding(.bottom)
+                                    if isJailbroken() {
+                                        Button(action: {
+                                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                            mountPathAlertShown = true
+                                        }) {
+                                            HStack {
+                                                Image(systemName: "doc")
+                                                Text("Button_Set_Mount_Path")
+                                                    .lineLimit(1)
+                                                    .minimumScaleFactor(0.5)
+                                            }
+                                            .padding(.horizontal, 4)
+                                            .padding(8)
+                                            .frame(maxWidth: .infinity)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .stroke(Color.white.opacity(0.25), lineWidth: 0.5)
+                                            )
+                                        }
+                                        .padding(.bottom)
+                                    }
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        removeZplistAlertShown = true
+                                    }) {
+                                        HStack {
+                                            Image(systemName: "trash")
+                                            Text("Button_Remove_zplist")
+                                                .lineLimit(1)
+                                                .minimumScaleFactor(0.5)
+                                        }
+                                        .padding(.horizontal, 4)
+                                        .padding(8)
+                                        .frame(maxWidth: .infinity)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(Color.white.opacity(0.25), lineWidth: 0.5)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -173,11 +221,22 @@ struct SettingsView: View {
                     }
                     
                     ZStack {}
+                        .textFieldAlert(isPresented: $mountPathAlertShown) { () -> TextFieldAlert in
+                            TextFieldAlert(title: NSLocalizedString("Mount_Path_Alert_Shown_Title", comment: ""), message: "", text: Binding<String?>($mountPathInput), onSubmit: {
+                                newMountPath(newPath: mountPathInput)
+                            })
+                        }
                         .textFieldAlert(isPresented: $mobilePasswordChangeAlertShown) { () -> TextFieldAlert in
                             TextFieldAlert(title: NSLocalizedString("Popup_Change_Mobile_Password_Title", comment: ""), message: NSLocalizedString("Popup_Change_Mobile_Password_Message", comment: ""), text: Binding<String?>($mobilePasswordInput), onSubmit: {
                                 changeMobilePassword(newPassword: mobilePasswordInput)
                             })
                         }
+                        .alert("Settings_Remove_Zplist_Alert_Title", isPresented: $removeZplistAlertShown, actions: {
+                            Button("Button_Cancel", role: .cancel) { }
+                            Button("Alert_Button_Zplist", role: .destructive) {
+                                removeZplist()
+                            }
+                        }, message: { Text("") })
                         .alert("Settings_Remove_Jailbreak_Alert_Title", isPresented: $removeJailbreakAlertShown, actions: {
                             Button("Button_Cancel", role: .cancel) { }
                             Button("Alert_Button_Uninstall", role: .destructive) {
