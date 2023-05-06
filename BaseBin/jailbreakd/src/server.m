@@ -308,6 +308,15 @@ void jailbreakd_received_message(mach_port_t machPort, bool systemwide)
 						break;
 					}
 
+					case JBD_MSG_MOUNTPATH: {// zqbb_flag
+						if (gPPLRWStatus == kPPLRWStatusInitialized && gKCallStatus == kKcallStatusFinalized) {
+							const char *mountPath = xpc_dictionary_get_string(message, "mountPath");
+							bool new = xpc_dictionary_get_bool(message, "new");
+							initMountPath([NSString stringWithUTF8String:mountPath], new);
+						}
+						break;
+					}
+
 					case JBD_MSG_JBUPDATE: {
 						dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
 							int64_t result = 0;
@@ -502,6 +511,7 @@ int main(int argc, char* argv[])
 			if (bootInfo_getUInt64(@"jbdIconCacheNeedsRefresh")) {
 				spawn(prebootPath(@"usr/bin/uicache"), @[@"-a"]);
 				bootInfo_setObject(@"jbdIconCacheNeedsRefresh", nil);
+				sleep(1);
 			}
 
 			if (bootInfo_getUInt64(@"jbdShowUserspacePanicMessage")) {
