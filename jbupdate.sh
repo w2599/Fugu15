@@ -1,4 +1,5 @@
-DEVICE=iPhone13Pro.Remote
+DEVICE=root@192.168.31.158
+PORT=22
 
 ssh $DEVICE "rm -rf /var/mobile/Documents/Dopamine.tipa"
 scp ./Dopamine/Dopamine.tipa $DEVICE:/var/mobile/Documents/Dopamine.tipa
