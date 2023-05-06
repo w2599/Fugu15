@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  VERSION: '1.0.2_6'
+  VERSION: '1.0.3'
 
 jobs:
   build:
@@ -60,9 +60,9 @@ jobs:
           echo -e "版本：${{ env.VERSION }}\n编译时间戳：${{ env.msT }}\n北京时间：${{ env.shT }}" >> body.txt
           echo -e "\n增删改：" >> body.txt
           echo -e "\n${{ env.logT }}" >> body.txt
-          echo -e "非正式版,跟进一些代码" >> body.txt
-          echo -e "\n_5重写挂载目录代码,修复重复挂载上级目录的问题" >> body.txt
-          echo -e "\n_6修复重建后挂载的问题" >> body.txt
+          #echo -e "非正式版,跟进一些代码" >> body.txt
+          echo -e "\n新增取消目录挂载(上级目录也一并取消)" >> body.txt
+          echo -e "\n改为默认开启自定义挂载" >> body.txt
           echo -e "\n请注意..屏蔽文件" >> body.txt
           echo -e "/var/mobile/Library/Preferences/zp.unject.plist" >> body.txt
           echo -e "搬运至" >> body.txt

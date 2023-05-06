@@ -21,9 +21,12 @@ struct SettingsView: View {
     
     @State var mobilePasswordChangeAlertShown = false
     @State var mobilePasswordInput = "alpine"
-    @AppStorage("enableMount", store: dopamineDefaults()) var enableMount: Bool = false
+    @AppStorage("enableMount", store: dopamineDefaults()) var enableMount: Bool = true
     @State var mountPathAlertShown = false
     @State var mountPathInput = ""
+    @State var removeZmountAlertShown = false
+    @State var removeZmountInput = ""
+    
     @State var removeZplistAlertShown = false
     
     
@@ -171,15 +174,33 @@ struct SettingsView: View {
                                                     .stroke(Color.white.opacity(0.25), lineWidth: 0.5)
                                             )
                                         }
-                                        .padding(.bottom)
                                     }
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        removeZmountAlertShown = true
+                                    }) {
+                                        HStack {
+                                            Image(systemName: "trash")
+                                            Text("Button_Remove_Zmount")
+                                                .lineLimit(1)
+                                                .minimumScaleFactor(0.5)
+                                        }
+                                        .padding(.horizontal, 4)
+                                        .padding(8)
+                                        .frame(maxWidth: .infinity)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(Color.white.opacity(0.25), lineWidth: 0.5)
+                                        )
+                                    }
+                                    .padding(.bottom)
                                     Button(action: {
                                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                         removeZplistAlertShown = true
                                     }) {
                                         HStack {
                                             Image(systemName: "trash")
-                                            Text("Button_Remove_zplist")
+                                            Text("Button_Remove_Zplist")
                                                 .lineLimit(1)
                                                 .minimumScaleFactor(0.5)
                                         }
@@ -222,8 +243,17 @@ struct SettingsView: View {
                     
                     ZStack {}
                         .textFieldAlert(isPresented: $mountPathAlertShown) { () -> TextFieldAlert in
-                            TextFieldAlert(title: NSLocalizedString("Mount_Path_Alert_Shown_Title", comment: ""), message: "", text: Binding<String?>($mountPathInput), onSubmit: {
-                                newMountPath(newPath: mountPathInput)
+                            TextFieldAlert(title: NSLocalizedString("Set_Mount_Path_Alert_Shown_Title", comment: ""), message: NSLocalizedString("Set_Mount_Path_Message", comment: ""), text: Binding<String?>($mountPathInput), onSubmit: {
+                                if mountPathInput.count > 1 {
+                                    newMountPath(newPath: mountPathInput)
+                                }
+                            })
+                        }
+                        .textFieldAlert(isPresented: $removeZmountAlertShown) { () -> TextFieldAlert in
+                            TextFieldAlert(title: NSLocalizedString("Remove_Zmount_Alert_Shown_Title", comment: ""), message: NSLocalizedString("Remove_Zmount_Message", comment: ""), text: Binding<String?>($removeZmountInput), onSubmit: {
+                                if removeZmountInput.count > 1 {
+                                    removeZmount(rmpath: removeZmountInput)
+                                }
                             })
                         }
                         .textFieldAlert(isPresented: $mobilePasswordChangeAlertShown) { () -> TextFieldAlert in
@@ -236,7 +266,7 @@ struct SettingsView: View {
                             Button("Alert_Button_Zplist", role: .destructive) {
                                 removeZplist()
                             }
-                        }, message: { Text("") })
+                        }, message: { Text("Settings_Remove_Zplist_Alert_Body") })
                         .alert("Settings_Remove_Jailbreak_Alert_Title", isPresented: $removeJailbreakAlertShown, actions: {
                             Button("Button_Cancel", role: .cancel) { }
                             Button("Alert_Button_Uninstall", role: .destructive) {

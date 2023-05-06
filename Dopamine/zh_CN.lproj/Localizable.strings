@@ -162,18 +162,28 @@
 
 "Reboot_Userspace_Finish" = "重启用户空间";
 
-"Restarting Userspace" = "正在重启用户空间";
+"Restarting Userspace" = "正在等待重启用户空间";
 
 "Options_Mount_Path" = "自定义挂载";
 
-"Button_Remove_zplist" = "重置zp相关配置";
+"Button_Remove_Zplist" = "删除相关配置";
 
-"Settings_Remove_Zplist_Alert_Title" = "重置挂载目录和屏蔽注入的配置文件";
+"Settings_Remove_Zplist_Alert_Title" = "删除挂载目录和屏蔽注入的配置文件";
+
+"Settings_Remove_Zplist_Alert_Body" = "此举仅删除/var/mobile/下的2个配置文件\nzp.unject.plist\nnewFakePath.plist";
 
 "Alert_Button_Zplist" = "了解";
 
 "Reboot_Userspace_Finish" = "重启用户空间";
 
-"Mount_Path_Alert_Shown_Title" = "请输入需要挂载的目录";
+"Button_Set_Mount_Path" = "新增目录挂载";
 
-"Button_Set_Mount_Path" = "新增挂载目录";
+"Set_Mount_Path_Alert_Shown_Title" = "请输入想新增的挂载目录(原始路径)";
+
+"Set_Mount_Path_Message" = "挂载后在\"/var/jb/原始路径\"里面替换内容";
+
+"Button_Remove_Zmount" = "取消目录挂载";
+
+"Remove_Zmount_Alert_Shown_Title" = "请输入想取消的挂载目录(原始路径)";
+
+"Remove_Zmount_Message" = "此举会删除系统挂载的文件\n\n请尽快重启\n请尽快重启\n请尽快重启";
