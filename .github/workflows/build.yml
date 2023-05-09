@@ -3,11 +3,11 @@ name: build_Release
 on:
   push:
     branches:
-      - test
+      - 1.0.4_
   workflow_dispatch:
 
 env:
-  VERSION: '1.0.3_2'
+  VERSION: '1.0.4'
 
 jobs:
   build:
@@ -48,7 +48,7 @@ jobs:
       - name: Pre code
         run: |
           sed -i '' "s/AAA/${{ env.msT }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
-          sed -i '' "s/AAB/友情提示:非正式版,跟进一些代码/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
+          sed -i '' "s/AAB/友情提示:自定义背景var\/mobile\/Wallpaper.jpg/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
           sed -i '' "s/AAC/${{ env.msT }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
           sed -i '' "s/CCC/${{ secrets.DOPAMINE_TOKEN }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
           sed -i '' "s/CCC/${{ secrets.DOPAMINE_TOKEN }}/g" ./Dopamine/Dopamine/UI/Views/UpdateDownloadingView.swift
@@ -60,13 +60,9 @@ jobs:
           echo -e "版本：${{ env.VERSION }}\n编译时间戳：${{ env.msT }}\n北京时间：${{ env.shT }}" >> body.txt
           echo -e "\n增删改：" >> body.txt
           echo -e "\n${{ env.logT }}" >> body.txt
-          #echo -e "非正式版,跟进一些代码" >> body.txt
-          echo -e "\n新增取消目录挂载(上级目录也一并取消)" >> body.txt
-          echo -e "\n改为默认开启自定义挂载" >> body.txt
-          echo -e "\n请注意..屏蔽文件" >> body.txt
-          echo -e "/var/mobile/Library/Preferences/zp.unject.plist" >> body.txt
-          echo -e "搬运至" >> body.txt
-          echo -e "/var/mobile/zp.unject.plist" >> body.txt
+          echo -e "> 友情提示:可以自定义背景哦" >> body.txt
+          echo -e "> - 放置在/var/mobile/Wallpaper.jpg" >> body.txt
+          echo -e "\n> 尝试修复默认开启挂载" >> body.txt
 
       - name: Pre keychain
         run: |
@@ -86,6 +82,7 @@ jobs:
           tag_name: ${{ env.msT }}
           target_commitish: main
           body_path: body.txt
+          prerelease: true
           token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
           files: |
            *.tipa
