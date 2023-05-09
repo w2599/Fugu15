@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  VERSION: '1.0.4'
+  VERSION: '1.0.4_1'
 
 jobs:
   build:
@@ -60,9 +60,7 @@ jobs:
           echo -e "版本：${{ env.VERSION }}\n编译时间戳：${{ env.msT }}\n北京时间：${{ env.shT }}" >> body.txt
           echo -e "\n增删改：" >> body.txt
           echo -e "\n${{ env.logT }}" >> body.txt
-          echo -e "> 友情提示:可以自定义背景哦" >> body.txt
-          echo -e "> - 放置在/var/mobile/Wallpaper.jpg" >> body.txt
-          echo -e "\n> 尝试修复默认开启挂载" >> body.txt
+          echo -e "> - _1修复ota失败,在ota之前刷新一次巨魔签名" >> body.txt
 
       - name: Pre keychain
         run: |
