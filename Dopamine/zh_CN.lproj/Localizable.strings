@@ -166,6 +166,8 @@
 
 "Options_Mount_Path" = "自定义挂载";
 
+"Options_No_Update" = "屏蔽更新";
+
 "Button_Remove_Zplist" = "删除相关配置";
 
 "Settings_Remove_Zplist_Alert_Title" = "删除挂载目录和屏蔽注入的配置文件";
