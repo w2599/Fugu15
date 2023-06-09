@@ -21,6 +21,8 @@ struct SettingsView: View {
     
     @State var mobilePasswordChangeAlertShown = false
     @State var mobilePasswordInput = "alpine"
+    
+    @AppStorage("noUpdateEnabled", store: dopamineDefaults()) var noUpdate: Bool = false
     @AppStorage("enableMount", store: dopamineDefaults()) var enableMount: Bool = true
     @State var mountPathAlertShown = false
     @State var mountPathInput = ""
@@ -61,6 +63,10 @@ struct SettingsView: View {
                                     if isJailbroken() {
                                         jailbrokenUpdateIDownloadEnabled()
                                     }
+                                }
+                            Toggle("Options_No_Update", isOn: $noUpdate)
+                                .onChange(of: noUpdate) { newValue in
+                                    clearTmpDirectory()
                                 }
                             if !isJailbroken() {
                                 Toggle("Options_Mount_Path", isOn: $enableMount)
