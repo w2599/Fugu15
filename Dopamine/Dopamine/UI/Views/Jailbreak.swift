@@ -188,9 +188,10 @@ func isEnvironmentHidden() -> Bool {
 }
 
 func update(tipaURL: URL) {
-    DispatchQueue.global(qos: .userInitiated).async {
-        jbdUpdateFromTIPA(tipaURL.path, true)
+    guard let jbctlPath = rootifyPath(path: "/basebin/jbctl") else {
+        return
     }
+    _ = execCmd(args: [jbctlPath, "update", "tipa", tipaURL.path])
 }
 
 func installedEnvironmentVersion() -> String {
