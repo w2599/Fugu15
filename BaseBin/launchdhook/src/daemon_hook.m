@@ -19,13 +19,13 @@ void addLaunchDaemon(xpc_object_t xdict, const char *path)
 			close(ldFd);
 			return;
 		}
-		size_t len = s.st_size;
-		void *addr = mmap(NULL, len, PROT_READ, MAP_FILE | MAP_PRIVATE, ldFd, 0);
-		if (addr) {
-			xpc_object_t daemonXdict = xpc_create_from_plist(addr, len);
+		void *addr = mmap(NULL, s.st_size, PROT_READ, MAP_FILE | MAP_PRIVATE, ldFd, 0);
+		if (addr != MAP_FAILED) {
+			xpc_object_t daemonXdict = xpc_create_from_plist(addr, s.st_size);
 			if (daemonXdict) {
 				xpc_dictionary_set_value(xdict, path, daemonXdict);
 			}
+			munmap(addr,s.st_size);
 		}
 		close(ldFd);
 	}
