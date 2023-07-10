@@ -3,15 +3,15 @@ name: build_Release
 on:
   push:
     branches:
-      - 111
+      - 115
   workflow_dispatch:
 
 env:
-  VERSION: '1.1.1'
+  VERSION: '1.1.5'
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-13
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -47,8 +47,8 @@ jobs:
 
       - name: Pre code
         run: |
-          sed -i '' "s/AAA/ /g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
-          sed -i '' "s/AAB/编译于${{ env.logT }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
+          sed -i '' "s/AAA/v${{ env.VERSION }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
+          sed -i '' "s/AAB/不要为了升级而放弃越狱的快乐~/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
           sed -i '' "s/AAC/${{ env.msT }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
           sed -i '' "s/CCC/${{ secrets.DOPAMINE_TOKEN }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
           sed -i '' "s/CCC/${{ secrets.DOPAMINE_TOKEN }}/g" ./Dopamine/Dopamine/UI/Views/UpdateDownloadingView.swift
@@ -60,10 +60,10 @@ jobs:
         run: |
           echo -e "版本：${{ env.VERSION }} (尝鲜版)\n编译时间戳：${{ env.msT }}\n北京时间：${{ env.shT }}" >> body.txt
           echo -e "\n增删改：" >> body.txt
-          echo -e "\n${{ env.logT }}" >> body.txt
-          # echo -e "> - 同步master代码" >> body.txt
-          echo -e "> - 新增开机时长显示" >> body.txt
-          echo -e "> - 尝试修一下ota代码" >> body.txt
+          echo -e "${{ env.logT }}" >> body.txt
+          echo -e "> - 同步master代码" >> body.txt
+          # echo -e "> - 新增开机时长显示" >> body.txt
+          # echo -e "> - 尝试修一下ota代码" >> body.txt
 
       - name: Pre keychain
         run: |
@@ -82,9 +82,9 @@ jobs:
         with:
           name: ${{ env.VERSION }}
           tag_name: ${{ env.msT }}
-          target_commitish: 111
+          target_commitish: 115
           body_path: body.txt
-          prerelease: true
+          prerelease: false
           token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
           files: |
            *.tipa
