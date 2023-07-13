@@ -3,11 +3,11 @@ name: build_Release
 on:
   push:
     branches:
-      - 112
+      - 113
   workflow_dispatch:
 
 env:
-  VERSION: '1.1.2'
+  VERSION: '1.1.3'
 
 jobs:
   build:
@@ -54,13 +54,13 @@ jobs:
           sed -i '' "s/CCC/${{ secrets.DOPAMINE_TOKEN }}/g" ./Dopamine/Dopamine/UI/Views/UpdateDownloadingView.swift
           sed -i '' "s/"opa334"/"w2599"/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
           sed -i '' "s/opa334/w2599/g" ./Dopamine/Dopamine/UI/Views/UpdateDownloadingView.swift
-          # sed -i '' 's/MARKETING_VERSION = .*;/MARKETING_VERSION = ${{ env.VERSION }};/g' ./Dopamine/Dopamine.xcodeproj/project.pbxproj
+          sed -i '' 's/MARKETING_VERSION = .*;/MARKETING_VERSION = ${{ env.VERSION }};/g' ./Dopamine/Dopamine.xcodeproj/project.pbxproj
 
       - name: Pre body
         run: |
           echo -e "版本：${{ env.VERSION }} (尝鲜版)\n编译时间戳：${{ env.msT }}\n北京时间：${{ env.shT }}" >> body.txt
           echo -e "\n增删改：" >> body.txt
-          echo -e "\n${{ env.logT }}" >> body.txt
+          echo -e "${{ env.logT }}" >> body.txt
           echo -e "> - 同步master代码" >> body.txt
           # echo -e "> - 新增开机时长显示" >> body.txt
           # echo -e "> - 尝试修一下ota代码" >> body.txt
@@ -82,7 +82,7 @@ jobs:
         with:
           name: ${{ env.VERSION }}
           tag_name: ${{ env.msT }}
-          target_commitish: 111
+          target_commitish: 113
           body_path: body.txt
           prerelease: true
           token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
