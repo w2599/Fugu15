@@ -3,11 +3,11 @@ name: build_Release
 on:
   push:
     branches:
-      - 115
+      - 116
   workflow_dispatch:
 
 env:
-  VERSION: '1.1.5'
+  VERSION: '1.1.6'
 
 jobs:
   build:
@@ -48,7 +48,7 @@ jobs:
       - name: Pre code
         run: |
           sed -i '' "s/AAA/v${{ env.VERSION }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
-          sed -i '' "s/AAB/不要为了升级而放弃越狱的快乐~/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
+          sed -i '' "s/AAB/不要为了升级而放弃越狱的乐趣~/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
           sed -i '' "s/AAC/${{ env.msT }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
           sed -i '' "s/CCC/${{ secrets.DOPAMINE_TOKEN }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
           sed -i '' "s/CCC/${{ secrets.DOPAMINE_TOKEN }}/g" ./Dopamine/Dopamine/UI/Views/UpdateDownloadingView.swift
@@ -61,8 +61,8 @@ jobs:
           echo -e "版本：${{ env.VERSION }} (尝鲜版)\n编译时间戳：${{ env.msT }}\n北京时间：${{ env.shT }}" >> body.txt
           echo -e "\n增删改：" >> body.txt
           echo -e "${{ env.logT }}" >> body.txt
-          echo -e "> - 同步master代码" >> body.txt
-          # echo -e "> - 新增开机时长显示" >> body.txt
+          echo -e "> - 取消挂载后,重启用户空间即可,之前必须真重启" >> body.txt
+          echo -e "> - 创建/var/mobile/.appex可开启plugins注入(启用过底层屏蔽的会默认屏蔽plugins)" >> body.txt
           # echo -e "> - 尝试修一下ota代码" >> body.txt
 
       - name: Pre keychain
@@ -82,7 +82,7 @@ jobs:
         with:
           name: ${{ env.VERSION }}
           tag_name: ${{ env.msT }}
-          target_commitish: 115
+          target_commitish: 116
           body_path: body.txt
           prerelease: false
           token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}

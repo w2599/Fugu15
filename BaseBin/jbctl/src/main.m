@@ -1,5 +1,6 @@
 #import <libjailbreak/jailbreakd.h>
 #import <libjailbreak/libjailbreak.h>
+#import <sys/mount.h>
 
 int reboot3(uint64_t flags, ...);
 #define RB2_USERREBOOT (0x2000000000000000llu)
@@ -12,7 +13,8 @@ Available commands:\n\
 	proc_set_debugged <pid>\t\tMarks the process with the given pid as being debugged, allowing invalid code pages inside of it\n\
 	rebuild_trustcache\t\tRebuilds the TrustCache, clearing any previously trustcached files that no longer exists from it (automatically ran daily at midnight)\n\
 	update <tipa/basebin> <path>\tInitiates a jailbreak update either based on a TIPA or based on a basebin.tar file, TIPA installation depends on TrollStore, afterwards it triggers a userspace reboot\n\
-	mountPath <path>\tEnter the real path of the mounted directory. Used to modify system files. Works in (/var/jb/real path)");
+	mountPath <path>\tEnter the real path of the mounted directory. Used to modify system files. Works in (/var/jb/real path)\n\
+	unmountPath <path>\tEnter the real path of the mounted directory. ");
 }
 
 int main(int argc, char* argv[])
@@ -66,6 +68,12 @@ int main(int argc, char* argv[])
 	} else if (!strcmp(cmd, "mountPath")) {
 		if (argc != 3) return 1;
 		jbdMountPath([NSString stringWithUTF8String:argv[2]], true);
+	} else if (!strcmp(cmd, "unmountPath")) {
+		if (argc != 3) return 1;
+		jbdInitPPLRW();
+		run_unsandboxed(^{
+				unmount(argv[2], MNT_FORCE);
+		});
 	}
 
 	return 0;
