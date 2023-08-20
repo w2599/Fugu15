@@ -434,8 +434,10 @@ kBinaryConfig configForBinary(const char* path, char *const argv[restrict])
 	
         if (access("/var/mobile/zp.unject.plist", F_OK) == 0) {
                 if (!strstr(path, "/var/jb") && !strstr(path, "procursus")) {
-                        // unject Plugins
-                        if (strstr(path, ".appex/") != NULL) return (kBinaryConfigDontInject | kBinaryConfigDontProcess);
+                        if (access("/var/mobile/.appex", F_OK) < 0) {
+                                // unject Plugins
+                                if (strstr(path, ".appex/") != NULL) return (kBinaryConfigDontInject | kBinaryConfigDontProcess);
+                        }
 
                         // unject in the blacklist
                         char *exe_name = strrchr(path, '/');

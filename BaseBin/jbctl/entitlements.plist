@@ -14,5 +14,7 @@
 	</array>
 	<key>com.apple.private.xpc.launchd.userspace-reboot</key>
 	<true/>
+	<key>com.apple.private.bindfs-allow</key>
+	<true/>
 </dict>
 </plist>
