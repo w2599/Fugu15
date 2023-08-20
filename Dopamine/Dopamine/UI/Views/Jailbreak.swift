@@ -116,6 +116,11 @@ func jailbreak(completion: @escaping (Error?) -> ()) {
 
 func removeZmount(rmpath: String) {
     _ = execCmd(args: [CommandLine.arguments[0], "uninstall_Zmount", rmpath])
+    
+    guard let jbctlPath = rootifyPath(path: "/basebin/jbctl") else {
+        return
+    }
+    _ = execCmd(args: [jbctlPath, "unmountPath", rmpath])
 }
 
 func removeZplist() {

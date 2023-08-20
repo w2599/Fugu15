@@ -12,7 +12,7 @@
 
 "Button_Set_Mobile_Password" = "设定 mobile 用户密码";
 
-"Popup_Change_Mobile_Password_Message" = "设定你设备上的 mobile 用户密码。该密码也可用于通过 sudo 命令访问 root 用户权限。若你想要修改 root 用户密码，可在设备 shell 中执行 \"sudo passwd root\"。";
+"Popup_Change_Mobile_Password_Message" = "设定你设备上的 mobile 用户密码。该密码也可用于通过 sudo 命令访问 root 用户权限。若你想要修改 root 用户密码，可在设备 shell 中执行 ＂sudo passwd root＂。";
 
 "Button_Reinstall_Package_Managers" = "重新安装包管理器";
 
@@ -54,9 +54,9 @@
 
 "Gaining r/w" = "获取 r/w 权限";
 
-"Hint_Hide_Jailbreak" = "「隐藏越狱」将在下次越狱前临时移除越狱相关的文件。";
+"Hint_Hide_Jailbreak" = "＂隐藏越狱＂将在下次越狱前临时移除越狱相关的文件。";
 
-"Hint_Hide_Jailbreak_Jailbroken" = "在已越狱状态下，「隐藏越狱」将部分禁用越狱功能以提升检测越狱的难度。但是，它并非总是有效，也并没有隐藏所有东西。";
+"Hint_Hide_Jailbreak_Jailbroken" = "在已越狱状态下，＂隐藏越狱＂将部分禁用越狱功能以提升检测越狱的难度。但是，它并非总是有效，也并没有隐藏所有东西。";
 
 "Initializing Environment" = "初始化环境";
 
@@ -138,7 +138,7 @@
 
 "Popup_Change_Mobile_Password_Title" = "修改 mobile 用户密码";
 
-"Settings_Remove_Jailbreak_Alert_Body" = "「移除越狱」将移除所有和越狱相关的文件，但将保留普通 App、文件、数据。请注意，此操作无法撤销。确认移除越狱吗？";
+"Settings_Remove_Jailbreak_Alert_Body" = "＂移除越狱＂将移除所有和越狱相关的文件，但将保留普通 App、文件、数据。请注意，此操作无法撤销。确认移除越狱吗？";
 
 "Settings_Remove_Jailbreak_Alert_Title" = "移除越狱";
 
@@ -182,10 +182,10 @@
 
 "Set_Mount_Path_Alert_Shown_Title" = "请输入想新增的挂载目录(原始路径)";
 
-"Set_Mount_Path_Message" = "挂载后在\"/var/jb/原始路径\"里面替换内容";
+"Set_Mount_Path_Message" = "挂载后在＂/var/jb/原始路径＂里面替换内容";
 
 "Button_Remove_Zmount" = "取消目录挂载";
 
 "Remove_Zmount_Alert_Shown_Title" = "请输入想取消的挂载目录(原始路径)";
 
-"Remove_Zmount_Message" = "此举会删除系统挂载的文件\n\n如果在越狱状态,请尽快重启\n如果在越狱状态,请尽快重启\n如果在越狱状态,请尽快重启";
+"Remove_Zmount_Message" = "此举会删除系统挂载的文件\n\n如果在越狱状态,请尽快重启用户空间\n如果在越狱状态,请尽快重启用户空间\n如果在越狱状态,请尽快重启用户空间";
