@@ -3,11 +3,11 @@ name: build_Release
 on:
   push:
     branches:
-      - 117
+      - 118
   workflow_dispatch:
 
 env:
-  VERSION: '1.1.7'
+  VERSION: '1.1.8'
 
 jobs:
   build:
@@ -19,7 +19,7 @@ jobs:
       - name: Bootstrap Procursus
         uses: w2599/procursus-action@main
         with:
-          packages: ldid trustcache make findutils coreutils
+          packages: ldid trustcache make findutils coreutils xz-utils
           cache: true
           cache-path: ~/__cache
         env:
@@ -69,20 +69,24 @@ jobs:
         run: |
           sudo security import Exploits/fastPath/arm.pfx -k /Library/Keychains/System.keychain -P password -A
 
+      - name: Pre xcode-select
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_15.0.app
+
       - name: Build tipa
         run: |
           set -x
           export THEOS=$HOME/theos
           gmake -j$(sysctl -n hw.physicalcpu)
           cp Dopamine/Dopamine.tipa Dopamine.tipa
-          mv Dopamine/Dopamine.tipa Dopamine_${{ env.msT }}.tipa
+          mv Dopamine/Dopamine.tipa Dopamine_${{ env.VERSION }}_${{ env.msT }}.tipa
 
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
           name: ${{ env.VERSION }}
           tag_name: ${{ env.msT }}
-          target_commitish: 117
+          target_commitish: 118
           body_path: body.txt
           prerelease: false
           token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
