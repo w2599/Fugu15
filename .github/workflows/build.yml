@@ -3,18 +3,25 @@ name: build_Release
 on:
   push:
     branches:
-      - 118
+      - 119_kfd
   workflow_dispatch:
 
 env:
-  VERSION: '1.1.8'
+  VERSION: '1.1.9'
 
 jobs:
   build:
     runs-on: macos-13
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Checkout tools repo
+        uses: actions/checkout@v4
+        with:
+          repository: opa334/kfd
+          path: Exploits/oobPCI/Sources/kfd
+
 
       - name: Bootstrap Procursus
         uses: w2599/procursus-action@main
@@ -56,6 +63,10 @@ jobs:
           sed -i '' "s/opa334/w2599/g" ./Dopamine/Dopamine/UI/Views/UpdateDownloadingView.swift
           sed -i '' 's/MARKETING_VERSION = .*;/MARKETING_VERSION = ${{ env.VERSION }};/g' ./Dopamine/Dopamine.xcodeproj/project.pbxproj
 
+      - name: Pre kfd code
+        run: |
+          sed -i '' "s/.tipa/kfd.tipa/g" ./Dopamine/Dopamine/UI/Views/UpdateDownloadingView.swift
+
       - name: Pre body
         run: |
           echo -e "版本：${{ env.VERSION }} (尝鲜版)\n编译时间戳：${{ env.msT }}\n北京时间：${{ env.shT }}" >> body.txt
@@ -78,15 +89,14 @@ jobs:
           set -x
           export THEOS=$HOME/theos
           gmake -j$(sysctl -n hw.physicalcpu)
-          cp Dopamine/Dopamine.tipa Dopamine.tipa
-          mv Dopamine/Dopamine.tipa Dopamine_${{ env.VERSION }}_${{ env.msT }}.tipa
+          mv Dopamine/Dopamine.tipa Dopamine_kfd.tipa
+          cp Dopamine_kfd.tipa Dopamine_kfd_${{ env.VERSION }}_${{ env.msT }}.tipa
 
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
           name: ${{ env.VERSION }}
-          tag_name: ${{ env.msT }}
-          target_commitish: 118
+          tag_name: ${{ env.VERSION }}
           body_path: body.txt
           prerelease: false
           token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
@@ -99,4 +109,4 @@ jobs:
         with:
           name: Dopamine_Latest
           path: |
-            Dopamine.tipa
+            Dopamine_kfd_${{ env.VERSION }}_${{ env.msT }}.tipa
