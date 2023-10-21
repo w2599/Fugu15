@@ -205,7 +205,6 @@ struct SettingsView: View {
                                                 .stroke(Color.white.opacity(0.25), lineWidth: 0.5)
                                         )
                                     }
-                                    .padding(.bottom)
                                     Button(action: {
                                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                         removeZplistAlertShown = true
@@ -213,6 +212,24 @@ struct SettingsView: View {
                                         HStack {
                                             Image(systemName: "trash")
                                             Text("Button_Remove_Zplist")
+                                                .lineLimit(1)
+                                                .minimumScaleFactor(0.5)
+                                        }
+                                        .padding(.horizontal, 4)
+                                        .padding(8)
+                                        .frame(maxWidth: .infinity)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(Color.white.opacity(0.25), lineWidth: 0.5)
+                                        )
+                                    }
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        reboot()
+                                    }) {
+                                        HStack {
+                                            Image(systemName: "arrow.clockwise.circle")
+                                            Text("Button_Reboot")
                                                 .lineLimit(1)
                                                 .minimumScaleFactor(0.5)
                                         }
