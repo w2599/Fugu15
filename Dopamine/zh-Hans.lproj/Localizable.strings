@@ -178,6 +178,8 @@
 
 "Reboot_Userspace_Finish" = "重启用户空间";
 
+"Button_Reboot" = "点我重启手机";
+
 "Button_Set_Mount_Path" = "新增目录挂载";
 
 "Set_Mount_Path_Alert_Shown_Title" = "请输入想新增的挂载目录(原始路径)";

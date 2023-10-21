@@ -1,29 +1,30 @@
 name: build_Release
 
 on:
-  push:
-    branches:
-      - 118
   workflow_dispatch:
 
 env:
-  VERSION: '1.1.8'
+  VERSION: '1.1.9'
 
 jobs:
   build:
     runs-on: macos-13
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@main
 
       - name: Bootstrap Procursus
         uses: w2599/procursus-action@main
         with:
-          packages: ldid trustcache make findutils coreutils xz-utils
-          cache: true
-          cache-path: ~/__cache
-        env:
-          DEBIAN_FRONTEND: noninteractive
+          packages: ldid make findutils coreutils xz-utils
+
+      - name: Pre trustcache
+        run: |
+          set -x
+          git clone https://github.com/CRKatri/trustcache
+          cd trustcache
+          gmake -j$(sysctl -n hw.physicalcpu) OPENSSL=1
+          sudo cp trustcache /opt/procursus/bin/
 
       - name: Pre theos
         run: |
@@ -34,7 +35,7 @@ jobs:
       - name: Pre env
         run: |
          sT=$(TZ=UTC-8 date +'%S')
-         echo "msT=$(date -j -f "%Y-%m-%d %H:%M:%S" "$(TZ=UTC-8 date +'%Y-%m-%d %H:%M'):${sT}" +%s)" >> $GITHUB_ENV
+         echo "msT=$(TZ=UTC-8 date -j -f "%Y-%m-%d %H:%M:%S" "$(TZ=UTC-8 date +'%Y-%m-%d %H:%M'):${sT}" +%s)" >> $GITHUB_ENV
          echo "shT=$(TZ=UTC-8 date +'%Y.%m.%d/%H.%M').${sT}" >> $GITHUB_ENV
          echo "logT=$(TZ=UTC-8 date +'%Y年%m月%d %H:%M'):${sT}" >> $GITHUB_ENV
 
@@ -49,7 +50,7 @@ jobs:
         run: |
           sed -i '' "s/AAA/v${{ env.VERSION }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
           sed -i '' "s/AAB/不要为了升级而放弃越狱的乐趣~/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
-          sed -i '' "s/AAC/${{ env.msT }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
+          sed -i '' "s/AAC/${{ env.VERSION }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
           sed -i '' "s/CCC/${{ secrets.DOPAMINE_TOKEN }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
           sed -i '' "s/CCC/${{ secrets.DOPAMINE_TOKEN }}/g" ./Dopamine/Dopamine/UI/Views/UpdateDownloadingView.swift
           sed -i '' "s/"opa334"/"w2599"/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
@@ -58,12 +59,10 @@ jobs:
 
       - name: Pre body
         run: |
-          echo -e "版本：${{ env.VERSION }} (尝鲜版)\n编译时间戳：${{ env.msT }}\n北京时间：${{ env.shT }}" >> body.txt
+          echo -e "版本：${{ env.VERSION }}\n编译时间戳：${{ env.msT }}\n北京时间：${{ env.shT }}" >> body.txt
           echo -e "\n增删改：" >> body.txt
           echo -e "${{ env.logT }}" >> body.txt
-          echo -e "> - 取消挂载后,重启用户空间即可,之前必须真重启" >> body.txt
-          echo -e "> - 创建/var/mobile/.appex可开启plugins注入(启用过底层屏蔽的会默认屏蔽plugins)" >> body.txt
-          # echo -e "> - 尝试修一下ota代码" >> body.txt
+          echo -e "> - 同步代码" >> body.txt
 
       - name: Pre keychain
         run: |
@@ -78,15 +77,14 @@ jobs:
           set -x
           export THEOS=$HOME/theos
           gmake -j$(sysctl -n hw.physicalcpu)
-          cp Dopamine/Dopamine.tipa Dopamine.tipa
-          mv Dopamine/Dopamine.tipa Dopamine_${{ env.VERSION }}_${{ env.msT }}.tipa
+          mv Dopamine/Dopamine.tipa Dopamine.tipa
+          cp Dopamine.tipa Dopamine_${{ env.VERSION }}_${{ env.msT }}.tipa
 
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
           name: ${{ env.VERSION }}
-          tag_name: ${{ env.msT }}
-          target_commitish: 118
+          tag_name: ${{ env.VERSION }}
           body_path: body.txt
           prerelease: false
           token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
