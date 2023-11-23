@@ -4,7 +4,8 @@ on:
   workflow_dispatch:
 
 env:
-  VERSION: '1.1.9'
+  VERSION: '1.1.11'
+  BUNDLEID: 'com.zqbb.Dopamine'
 
 jobs:
   build:
@@ -37,6 +38,13 @@ jobs:
          curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos > theos
          sed -i '' 's/get_sdks$//g' theos
          bash theos
+
+      - name: Pre Bundleid
+        run: |
+          sed -i '' "s/com.opa334.Dopamine/${{ env.BUNDLEID }}/g" ./Packages/Fugu15KernelExploit/Sources/Fugu15KernelExploit/Util.swift
+          sed -i '' "s/com.opa334.Dopamine/${{ env.BUNDLEID }}/g" ./Dopamine/Dopamine/Dopamine.entitlements
+          sed -i '' "s/com.opa334.Dopamine/${{ env.BUNDLEID }}/g" ./Dopamine/Dopamine.xcodeproj/project.pbxproj
+          sed -i '' "s/com.opa334.Dopamine/${{ env.BUNDLEID }}/g" ./BaseBin/jailbreakd/src/update.m
 
       - name: Pre env
         run: |
@@ -89,19 +97,18 @@ jobs:
           set -x
           export THEOS=$HOME/theos
           gmake -j$(sysctl -n hw.physicalcpu)
-          mv Dopamine/Dopamine.tipa Dopamine_kfd.tipa
-          cp Dopamine_kfd.tipa Dopamine_kfd_${{ env.VERSION }}_${{ env.msT }}.tipa
+          mv Dopamine/Dopamine.tipa Dopamine_kfd_${{ env.VERSION }}_${{ env.msT }}.tipa
 
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        with:
-          name: ${{ env.VERSION }}
-          tag_name: ${{ env.VERSION }}
-          # body_path: body.txt
-          prerelease: false
-          token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
-          files: |
-           *.tipa
+      # - name: Release
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     name: ${{ env.VERSION }}
+      #     tag_name: ${{ env.VERSION }}
+      #     # body_path: body.txt
+      #     prerelease: false
+      #     token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
+      #     files: |
+      #      *.tipa
 
       - name: Upload Latest Artifact
         id: dopamine-latest-upload
