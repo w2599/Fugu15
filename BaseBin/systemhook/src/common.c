@@ -183,6 +183,37 @@ void enumeratePathString(const char *pathsString, void (^enumBlock)(const char *
 	free(pathsCopy);
 }
 
+// zqbb_flag  inject
+extern xpc_object_t xpc_create_from_plist(const void* buf, size_t len);
+bool inject(const char *str , const char *jectPath) {
+    struct stat s = {};
+    int fd = open(jectPath, O_RDONLY);
+    if (fd < 0)
+        return 0;
+    if (fstat(fd, &s) != 0) {
+        close(fd);
+        return 0;
+    }
+    void *addr = mmap(NULL, s.st_size, PROT_READ, MAP_FILE | MAP_PRIVATE, fd, 0);
+    if (addr == MAP_FAILED) {
+        close(fd);
+        return 0;
+    }
+    xpc_object_t xplist = xpc_create_from_plist(addr, s.st_size);
+    if (!xplist) {
+        munmap(addr, s.st_size);
+        close(fd);
+        return 0;
+    }
+    bool result = 0;
+    if (xpc_get_type(xplist) == XPC_TYPE_DICTIONARY && xpc_dictionary_get_bool(xplist, str))
+        result = 1;
+    xpc_release(xplist);
+    munmap(addr, s.st_size);
+    close(fd);
+    return result;
+}
+
 typedef enum 
 {
 	kBinaryConfigDontInject = 1 << 0,
@@ -220,7 +251,41 @@ kBinaryConfig configForBinary(const char* path, char *const argv[restrict])
 		if (!strcmp(processBlacklist[i], path)) return (kBinaryConfigDontInject | kBinaryConfigDontProcess);
 	}
 
-	return 0;
+    // White list inject mode
+    const char *jectPath = "/var/mobile/zp.inject.plist";
+    if (access(jectPath, F_OK) == 0)
+    {
+        const char *whitelist[] = 
+		{
+			"/var/jb",
+			"/preboot",
+			"/xpcproxy",
+			"/SpringBoard",
+			"/Dopamine",
+			"/iconservicesagent",
+			"/cfprefsd",
+			"/dasd",
+			"/druid",
+			"/nfcd",
+			"/mediaserverd",
+			"/InCallService",
+			"/Preferences"
+		};
+        size_t whitelistCount = sizeof(whitelist) / sizeof(whitelist[0]);
+        for (size_t i = 0; i < whitelistCount; i++)
+        {
+            if (strstr(path, whitelist[i])) return 0;
+        }
+
+        char *exe_name = strrchr(path, '/');
+        if (exe_name != NULL)
+        {
+            exe_name++;
+            if (inject(exe_name, jectPath)) return 0;
+        }
+        return (kBinaryConfigDontInject | kBinaryConfigDontProcess);
+    }
+        return 0;
 }
 
 // 1. Make sure the about to be spawned binary and all of it's dependencies are trust cached
