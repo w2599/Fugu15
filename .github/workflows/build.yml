@@ -1,0 +1,130 @@
+name: build_Release
+
+on:
+  workflow_dispatch:
+
+env:
+  VERSION: '2.0.4'
+  # BUNDLEID: 'com.zqbb.Dopamine'
+
+jobs:
+  build:
+    runs-on: macos-13
+    steps:
+      - name: Checkout
+        uses: actions/checkout@main
+
+      - name: Checkout tools repo
+        uses: actions/checkout@main
+        with:
+          repository: opa334/ChOma
+          path: BaseBin/ChOma
+
+      - name: Checkout tools repo
+        uses: actions/checkout@main
+        with:
+          repository: opa334/XPF
+          path: BaseBin/XPF
+
+      - name: Checkout tools repo
+        uses: actions/checkout@main
+        with:
+          repository: opa334/opainject
+          path: BaseBin/opainject
+
+      - name: Bootstrap Procursus
+        uses: w2599/procursus-action@main
+        with:
+          packages: ldid make findutils coreutils xz-utils
+
+      - name: Pre trustcache
+        run: |
+          set -x
+          git clone https://github.com/CRKatri/trustcache
+          cd trustcache
+          gmake -j$(sysctl -n hw.physicalcpu) OPENSSL=1
+          sudo cp trustcache /opt/procursus/bin/
+
+      - name: Pre theos
+        run: |
+         curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos > theos
+         # sed -i '' 's/get_sdks$//g' theos
+         bash theos
+
+      - name: Pre Bundleid
+        run: |
+          # sed -i '' "s/com.opa334.Dopamine/${{ env.BUNDLEID }}/g" ./Packages/Fugu15KernelExploit/Sources/Fugu15KernelExploit/Util.swift
+          # sed -i '' "s/com.opa334.Dopamine/${{ env.BUNDLEID }}/g" ./Dopamine/Dopamine/Dopamine.entitlements
+          # sed -i '' "s/com.opa334.Dopamine/${{ env.BUNDLEID }}/g" ./Dopamine/Dopamine.xcodeproj/project.pbxproj
+          # sed -i '' "s/com.opa334.Dopamine/${{ env.BUNDLEID }}/g" ./BaseBin/jailbreakd/src/update.m
+
+      - name: Pre env
+        run: |
+         sT=$(TZ=UTC-8 date +'%S')
+         echo "msT=$(TZ=UTC-8 date -j -f "%Y-%m-%d %H:%M:%S" "$(TZ=UTC-8 date +'%Y-%m-%d %H:%M'):${sT}" +%s)" >> $GITHUB_ENV
+         echo "shT=$(TZ=UTC-8 date +'%Y.%m.%d/%H.%M').${sT}" >> $GITHUB_ENV
+         echo "logT=$(TZ=UTC-8 date +'%Y年%m月%d %H:%M'):${sT}" >> $GITHUB_ENV
+
+      - name: Log env
+        run: |
+         echo ${{ env.VERSION }}
+         echo ${{ env.msT }}
+         echo ${{ env.shT }}
+         echo ${{ env.logT }}
+
+      - name: Pre code
+        run: |
+          # sed -i '' "s/AAA/v${{ env.VERSION }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
+          # sed -i '' "s/AAB/不要为了升级而放弃越狱的乐趣~/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
+          # sed -i '' "s/AAC/${{ env.VERSION }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
+          # sed -i '' "s/CCC/${{ secrets.DOPAMINE_TOKEN }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
+          # sed -i '' "s/CCC/${{ secrets.DOPAMINE_TOKEN }}/g" ./Dopamine/Dopamine/UI/Views/UpdateDownloadingView.swift
+          # sed -i '' "s/"opa334"/"w2599"/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
+          # sed -i '' "s/opa334/w2599/g" ./Dopamine/Dopamine/UI/Views/UpdateDownloadingView.swift
+          # sed -i '' 's/MARKETING_VERSION = .*;/MARKETING_VERSION = ${{ env.VERSION }};/g' ./Dopamine/Dopamine.xcodeproj/project.pbxproj
+
+      - name: Pre body
+        run: |
+          echo -e "版本：${{ env.VERSION }}\n编译时间戳：${{ env.msT }}\n北京时间：${{ env.shT }}" >> body.txt
+          echo -e "\n增删改：" >> body.txt
+          echo -e "${{ env.logT }}" >> body.txt
+          echo -e "> - 同步代码" >> body.txt
+
+      - name: Pre keychain
+        run: |
+          # sudo security import Exploits/fastPath/arm.pfx -k /Library/Keychains/System.keychain -P password -A
+
+      - name: Pre xcode-select
+        run: |
+          # sudo xcode-select --switch /Applications/Xcode_15.0.app
+
+      - name: Build tipa
+        run: |
+          set -x
+          export THEOS=$HOME/theos
+          echo $GITHUB_WORKSPACE
+          cd Application/Dopamine/Resources
+          bash download_bootstraps.sh
+          cd $GITHUB_WORKSPACE
+          make
+          # cp Dopamine/Dopamine.tipa Dopamine.tipa
+          mv Application/Dopamine.tipa Dopamine_${{ env.VERSION }}_${{ env.msT }}.tipa
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: ${{ env.VERSION }}
+          tag_name: ${{ env.VERSION }}
+          body_path: body.txt
+          prerelease: false
+          token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
+          files: |
+           *.tipa
+
+      - name: Upload Latest Artifact
+        id: dopamine-latest-upload
+        uses: actions/upload-artifact@v3
+        with:
+          name: Dopamine_Latest
+          path: |
+            Dopamine_${{ env.VERSION }}_${{ env.msT }}.tipa
