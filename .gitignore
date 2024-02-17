@@ -13,3 +13,4 @@ Tools/fastPathSign/.build_*
 Exploits/kfd/kfd.framework/kfd
 cmake-build-*
 BaseBin/jbupdate.sh
+BaseBin/opainject
