@@ -13,6 +13,7 @@
 #import <compression.h>
 #import <xpf/xpf.h>
 #import <dlfcn.h>
+
 #import <libjailbreak/codesign.h>
 #import <libjailbreak/primitives.h>
 #import <libjailbreak/primitives_IOSurface.h>
@@ -576,6 +577,7 @@ int ensure_randomized_cdhash(const char* inputPath, void* cdhashOut);
     // *errOut = [self createFakeLib];
     // if (*errOut) return;
     
+    fake_mount();
     setenv("DYLD_INSERT_LIBRARIES", JBRootPath("/basebin/systemhook.dylib"), 1);
     
 //    // Unsandbox iconservicesagent so that app icons can work
@@ -602,10 +604,37 @@ int ensure_randomized_cdhash(const char* inputPath, void* cdhashOut);
     printf("Done!\n");
 }
 
+
 - (void)finalize
 {
     [[DOUIManager sharedInstance] sendLog:DOLocalizedString(@"Rebooting Userspace") debug:NO];
     [[DOEnvironmentManager sharedManager] rebootUserspace];
+}
+
+
+void fake_mount() // zqbb_flag
+{
+
+// BOOL mountEnabled = [[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"mountEnabled" fallback:YES];
+// if (mountEnabled) {
+NSString *filePath = @"/var/mobile/newFakePath_RH.plist";
+
+if ([[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
+    
+    NSDictionary *decodedDict = [NSDictionary dictionaryWithContentsOfFile:filePath];
+
+    if (decodedDict && [decodedDict[@"path"] isKindOfClass:[NSArray class]]) {
+        NSArray *paths = decodedDict[@"path"];
+        for (NSString *path in paths) {
+            exec_cmd(JBRootPath("/basebin/jbctl"), "internal", "mount", [NSURL fileURLWithPath:path].fileSystemRepresentation, NULL);
+        }
+    }
+}
+
+
+
+// }
+    
 }
 
 @end
