@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  VERSION: '2.0.5.2'
+  VERSION: '2.0.5.3'
   BUNDLEID: 'com.zqbb.Dopamine'
 
 jobs:
@@ -71,11 +71,12 @@ jobs:
 
       - name: Pre code
         run: |
-          sed -i '' "s/AAAA/v${{ env.VERSION }}/g" ./Application/Dopamine/UI/DOMainViewController.m
+          sed -i '' "s/AAAA/v${{ env.VERSION }}.${{ env.msT }}/g" ./Application/Dopamine/UI/DOMainViewController.m
           sed -i '' "s/AAAB/不要为了升级而放弃越狱的乐趣~/g" ./Application/Dopamine/UI/DOMainViewController.m
           sed -i '' "s/AAAB/不要为了升级而放弃越狱的乐趣~/g" ./Application/Dopamine/UI/DOMainViewController.m
           sed -i '' "s/opa334/w2599/g" ./Application/Dopamine/UI/Settings/DOCreditsViewController.m
           sed -i '' "s/opa334/w2599/g" ./Application/Dopamine/UI/Update/DOUpdateViewController.m
+          sed -i '' "s/opa334/w2599/g" ./Application/Dopamine/UI/DOUIManager.m
           
       - name: Pre body
         run: |
