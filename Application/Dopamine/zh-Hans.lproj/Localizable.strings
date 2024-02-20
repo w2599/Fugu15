@@ -10,10 +10,10 @@
 "Unsupported" = "不支持";
 
 // Action Menu
-"Menu_Settings_Title" = "设置";
-"Menu_Restart_SpringBoard_Title" = "重新启动SpringBoard";
-"Menu_Reboot_Userspace_Title" = "重新启动用户空间";
-"Menu_Credits_Title" = "关于";
+"Menu_Settings_Title" = "千变万化";
+"Menu_Restart_SpringBoard_Title" = " 妙手回春";
+"Menu_Reboot_Userspace_Title" = "涅槃重生";
+"Menu_Credits_Title" = "仙人指路";
 
 // Updating
 "Button_Update" = "更新";
@@ -105,12 +105,7 @@
 
 // mount 
 "Input_Mmount_Title" = "新增挂载";
-"Input_Mount_Title_B" = "输入原始路径";
-"Input_Mount_Path" = "输入原始路径";
-"Button_Mount" = "确定";
-
 "Input_Unmount_Title" = "取消挂载";
-"Input_Unmount_Title_B" = "输入原始路径";
-"Input_Unmount_Path" = "输入原始路径";
-"Button_Unmount" = "确定";
+"Input_Mount_Title" = "输入原始路径";
+"Button_Mount" = "确定";
 
