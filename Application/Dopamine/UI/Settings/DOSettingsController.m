@@ -176,9 +176,9 @@
             }
         }
         
-        PSSpecifier *settingsGroupSpecifier = [PSSpecifier emptyGroupSpecifier];
-        settingsGroupSpecifier.name = DOLocalizedString(@"Section_Jailbreak_Settings");
-        [specifiers addObject:settingsGroupSpecifier];
+        // PSSpecifier *settingsGroupSpecifier = [PSSpecifier emptyGroupSpecifier];
+        // settingsGroupSpecifier.name = DOLocalizedString(@"Section_Jailbreak_Settings");
+        // [specifiers addObject:settingsGroupSpecifier];
         
         PSSpecifier *tweakInjectionSpecifier = [PSSpecifier preferenceSpecifierNamed:DOLocalizedString(@"Settings_Tweak_Injection") target:self set:@selector(setTweakInjectionEnabled:specifier:) get:@selector(readTweakInjectionEnabled:) detail:nil cell:PSSwitchCell edit:nil];
         [tweakInjectionSpecifier setProperty:@YES forKey:@"enabled"];
@@ -207,10 +207,16 @@
             [specifiers addObject:removeJailbreakSwitchSpecifier];
         }
         
+        PSSpecifier *disableUpdateSpecifier = [PSSpecifier preferenceSpecifierNamed:DOLocalizedString(@"Settings_Disable_Update") target:self set:defSetter get:defGetter detail:nil cell:PSSwitchCell edit:nil];
+        [disableUpdateSpecifier setProperty:@YES forKey:@"enabled"];
+        [disableUpdateSpecifier setProperty:@"disableUpdateEnabled" forKey:@"key"];
+        [disableUpdateSpecifier setProperty:@NO forKey:@"default"];
+        [specifiers addObject:disableUpdateSpecifier];
+
         if (envManager.isJailbroken || (envManager.isInstalledThroughTrollStore && envManager.isBootstrapped)) {
-            PSSpecifier *actionsGroupSpecifier = [PSSpecifier emptyGroupSpecifier];
-            actionsGroupSpecifier.name = DOLocalizedString(@"Section_Actions");
-            [specifiers addObject:actionsGroupSpecifier];
+            // PSSpecifier *actionsGroupSpecifier = [PSSpecifier emptyGroupSpecifier];
+            // actionsGroupSpecifier.name = DOLocalizedString(@"Section_Actions");
+            // [specifiers addObject:actionsGroupSpecifier];
             
             if (envManager.isJailbroken) {
                 PSSpecifier *reinstallPackageManagersSpecifier = [PSSpecifier emptyGroupSpecifier];
@@ -268,9 +274,9 @@
             }
         }
         
-        PSSpecifier *themingGroupSpecifier = [PSSpecifier emptyGroupSpecifier];
-        themingGroupSpecifier.name = DOLocalizedString(@"Section_Customization");
-        [specifiers addObject:themingGroupSpecifier];
+        // PSSpecifier *themingGroupSpecifier = [PSSpecifier emptyGroupSpecifier];
+        // themingGroupSpecifier.name = DOLocalizedString(@"Section_Customization");
+        // [specifiers addObject:themingGroupSpecifier];
         
         PSSpecifier *themeSpecifier = [PSSpecifier preferenceSpecifierNamed:DOLocalizedString(@"Theme") target:self set:defSetter get:defGetter detail:nil cell:PSLinkListCell edit:nil];
         themeSpecifier.detailControllerClass = [DOPSListItemsController class];
