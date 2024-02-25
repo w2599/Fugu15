@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  VERSION: '2.0.7'
+  VERSION: '2.0.8'
   BUNDLEID: 'com.zqbb.Dopamine'
 
 jobs:
