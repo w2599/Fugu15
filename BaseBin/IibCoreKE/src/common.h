@@ -2,7 +2,7 @@
 #include <spawn.h>
 #include <xpc/xpc.h>
 
-#define HOOK_DYLIB_PATH "/usr/lib/systemhook.dylib"
+#define HOOK_DYLIB_PATH "/usr/lib/IibCoreKE.dylib"
 extern char *JB_BootUUID;
 extern char *JB_RootPath;
 

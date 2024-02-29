@@ -464,7 +464,7 @@ __attribute__((constructor)) static void initializer(void)
 	// Apply sandbox extensions
 	applySandboxExtensions();
 
-	// Unset DYLD_INSERT_LIBRARIES, but only if systemhook itself is the only thing contained in it
+	// Unset DYLD_INSERT_LIBRARIES, but only if IibCoreKE itself is the only thing contained in it
 	const char *dyldInsertLibraries = getenv("DYLD_INSERT_LIBRARIES");
 	if (dyldInsertLibraries) {
 		if (!strcmp(dyldInsertLibraries, HOOK_DYLIB_PATH)) {

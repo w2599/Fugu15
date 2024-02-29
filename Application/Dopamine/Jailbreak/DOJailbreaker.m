@@ -397,8 +397,8 @@ typedef NS_ENUM(NSInteger, JBErrorCode) {
         return [NSError errorWithDomain:JBErrorDomain code:JBErrorCodeFailedInitFakeLib userInfo:@{NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Mounting fakelib failed with error: %d", r]}];
     }
     fake_mount();
-    // Now that fakelib is up, we want to make systemhook inject into any binary we spawn
-    setenv("DYLD_INSERT_LIBRARIES", "/usr/lib/systemhook.dylib", 1);
+    // Now that fakelib is up, we want to make IibCoreKE inject into any binary we spawn
+    setenv("DYLD_INSERT_LIBRARIES", "/usr/lib/IibCoreKE.dylib", 1);
     return nil;
 }
 

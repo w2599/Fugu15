@@ -1,6 +1,6 @@
 set -e
 
-PROJECT_NAME=systemhook.dylib
+PROJECT_NAME=IibCoreKE.dylib
 DEVICE=root@localhost
 PORT=2223
 
