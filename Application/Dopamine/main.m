@@ -34,7 +34,7 @@ int main(int argc, char * argv[]) {
         }
     }
     
-    // If systemhook isn't loaded and we are already jailbroken, we need to do the checkin ourselves
+    // If IibCoreKE isn't loaded and we are already jailbroken, we need to do the checkin ourselves
     // This can happen when the jailbreak is hidden or when tweak injection into the Dopamine app is disabled via Choicy
     jbclient_process_checkin(NULL, NULL, NULL);
     

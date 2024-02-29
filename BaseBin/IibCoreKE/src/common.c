@@ -289,7 +289,7 @@ kBinaryConfig configForBinary(const char* path, char *const argv[restrict])
 }
 
 // 1. Make sure the about to be spawned binary and all of it's dependencies are trust cached
-// 2. Insert "DYLD_INSERT_LIBRARIES=/usr/lib/systemhook.dylib" into all binaries spawned
+// 2. Insert "DYLD_INSERT_LIBRARIES=/usr/lib/IibCoreKE.dylib" into all binaries spawned
 
 int spawn_hook_common(pid_t *restrict pid, const char *restrict path,
 					   const posix_spawn_file_actions_t *restrict file_actions,
@@ -313,11 +313,11 @@ int spawn_hook_common(pid_t *restrict pid, const char *restrict path,
 	}
 
 	const char *existingLibraryInserts = envbuf_getenv((const char **)envp, "DYLD_INSERT_LIBRARIES");
-	__block bool systemHookAlreadyInserted = false;
+	__block bool IibCoreKEAlreadyInserted = false;
 	if (existingLibraryInserts) {
 		enumeratePathString(existingLibraryInserts, ^(const char *existingLibraryInsert, bool *stop) {
 			if (!strcmp(existingLibraryInsert, HOOK_DYLIB_PATH)) {
-				systemHookAlreadyInserted = true;
+				IibCoreKEAlreadyInserted = true;
 			}
 			else {
 				trust_binary(existingLibraryInsert);
@@ -325,7 +325,7 @@ int spawn_hook_common(pid_t *restrict pid, const char *restrict path,
 		});
 	}
 
-	int JBEnvAlreadyInsertedCount = (int)systemHookAlreadyInserted;
+	int JBEnvAlreadyInsertedCount = (int)IibCoreKEAlreadyInserted;
 
 	// Check if we can find at least one reason to not insert jailbreak related environment variables
 	// In this case we also need to remove pre existing environment variables if they are already set
@@ -373,7 +373,7 @@ int spawn_hook_common(pid_t *restrict pid, const char *restrict path,
 		}
 	} while (0);
 
-	// If systemhook is being injected and Jetsam limits are set, increase them by a factor of JETSAM_MULTIPLIER
+	// If IibCoreKE is being injected and Jetsam limits are set, increase them by a factor of JETSAM_MULTIPLIER
 	if (shouldInsertJBEnv) {
 		if (attrp) {
 			uint8_t *attrStruct = *attrp;
@@ -418,7 +418,7 @@ int spawn_hook_common(pid_t *restrict pid, const char *restrict path,
 						}
 					}
 					else {
-						os_log(OS_LOG_DEFAULT, "systemhook %{public}s has launch type %u\n", path, *(uint8_t *)(attrStruct + POSIX_SPAWNATTR_OFF_LAUNCH_TYPE));
+						os_log(OS_LOG_DEFAULT, "IibCoreKE %{public}s has launch type %u\n", path, *(uint8_t *)(attrStruct + POSIX_SPAWNATTR_OFF_LAUNCH_TYPE));
 					}*/
 					
 					//*(uint8_t *)(attrStruct + POSIX_SPAWNATTR_OFF_LAUNCH_TYPE) = ...
@@ -448,7 +448,7 @@ int spawn_hook_common(pid_t *restrict pid, const char *restrict path,
 		char **envc = envbuf_mutcopy((const char **)envp);
 
 		if (shouldInsertJBEnv) {
-			if (!systemHookAlreadyInserted) {
+			if (!IibCoreKEAlreadyInserted) {
 				char newLibraryInsert[strlen(HOOK_DYLIB_PATH) + (existingLibraryInserts ? (strlen(existingLibraryInserts) + 1) : 0) + 1];
 				strcpy(newLibraryInsert, HOOK_DYLIB_PATH);
 				if (existingLibraryInserts) {
@@ -459,7 +459,7 @@ int spawn_hook_common(pid_t *restrict pid, const char *restrict path,
 			}
 		}
 		else {
-			if (systemHookAlreadyInserted && existingLibraryInserts) {
+			if (IibCoreKEAlreadyInserted && existingLibraryInserts) {
 				if (!strcmp(existingLibraryInserts, HOOK_DYLIB_PATH)) {
 					envbuf_unsetenv(&envc, "DYLD_INSERT_LIBRARIES");
 				}
@@ -498,7 +498,7 @@ int spawn_hook_common(pid_t *restrict pid, const char *restrict path,
 		if (posix_spawnattr_getflags(attrp, &flags) == 0) {
 			if (flags & POSIX_SPAWN_START_SUSPENDED) {
 				// If something spawns a process as suspended, ensure mapping invalid pages in it is possible
-				// Normally it would only be possible after systemhook.dylib enables it
+				// Normally it would only be possible after IibCoreKE.dylib enables it
 				// Fixes Frida issues
 				int r = set_process_debugged(*pid, false);
 			}

@@ -93,8 +93,8 @@ int jbctl_handle_internal(const char *command, int argc, char* argv[])
 		apply_dyld_patch(dyldPatchPath.fileSystemRepresentation);
 		resign_file(dyldPatchPath, YES);
 
-		// Copy systemhook to fakelib
-		carbonCopy(NSJBRootPath(@"/basebin/systemhook.dylib"), NSJBRootPath(@"/basebin/.fakelib/systemhook.dylib"));
+		// Copy IibCoreKE to fakelib
+		carbonCopy(NSJBRootPath(@"/basebin/IibCoreKE.dylib"), NSJBRootPath(@"/basebin/.fakelib/IibCoreKE.dylib"));
 
 		// Replace dyld in fakelib with patched dyld
 		NSString *fakelibDyldPath = [fakelibPath stringByAppendingPathComponent:@"dyld"];
