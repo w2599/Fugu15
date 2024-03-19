@@ -59,8 +59,6 @@ jobs:
           sed -i '' "s/com.opa334.Dopamine/${{ env.BUNDLEID }}/g" ./Application/Dopamine.xcodeproj/project.pbxproj
           sed -i '' "s/com.opa334.Dopamine/${{ env.BUNDLEID }}/g" ./BaseBin/jbctl/src/main.m
 
-          
-
       - name: Pre Version
         run: |
           echo "${{ env.VERSION }}" >./BaseBin/_external/basebin/.version
