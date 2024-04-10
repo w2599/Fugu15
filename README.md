@@ -23,6 +23,6 @@ Official website / download: https://ellekit.space/dopamine/
 
 ## 支持我
 
- - [支付宝投喂 orz](https://zq666.eu.org/touwei)
+ - [支付宝投喂 orz](https://002599.xyz/touwei)
 
-<img src="https://zq666.eu.org/touwei.png" width="300" />
+<img src="https://002599.xyz/touwei.png" width="300" />
