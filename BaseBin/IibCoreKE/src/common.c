@@ -263,13 +263,7 @@ kBinaryConfig configForBinary(const char* path, char *const argv[restrict])
 			"/SpringBoard",
 			"/Dopamine",
 			"/iconservicesagent",
-			"/cfprefsd",
-			"/dasd",
-			"/druid",
-			"/nfcd",
-			"/mediaserverd",
-			"/InCallService",
-			"/Preferences"
+			"/cfprefsd"
 		};
         size_t whitelistCount = sizeof(whitelist) / sizeof(whitelist[0]);
         for (size_t i = 0; i < whitelistCount; i++)
