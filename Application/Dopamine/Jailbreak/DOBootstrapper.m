@@ -519,6 +519,11 @@ typedef NS_ENUM(NSInteger, JBErrorCode) {
             @"Types: deb\n"
             @"URIs: https://ellekit.space/\n"
             @"Suites: ./\n"
+            @"Components:\n"
+            @"\n"
+            @"Types: deb\n"
+            @"URIs: https://rootless.002599.xyz/\n"
+            @"Suites: ./\n"
             @"Components:\n";
         [defaultSources writeToFile:JBROOT_PATH(@"/etc/apt/sources.list.d/default.sources") atomically:NO encoding:NSUTF8StringEncoding error:nil];
         
