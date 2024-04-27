@@ -476,7 +476,7 @@ __attribute__((constructor)) static void initializer(void)
 #ifndef __arm64e__
 		// On arm64, writing to executable pages removes CS_VALID from the csflags of the process
 		// These hooks are neccessary to get the system to behave with this
-		// They're ugly but they're needed
+		// They are ugly but needed
 		litehook_hook_function(csops, csops_hook);
 		litehook_hook_function(csops_audittoken, csops_audittoken_hook);
 		if (__builtin_available(iOS 16.0, *)) {
@@ -502,9 +502,6 @@ __attribute__((constructor)) static void initializer(void)
 
 #ifndef __arm64e__
 		// Feeable attempt at adding back CS_VALID
-		// If any hooks are applied after this, it is lost again
-		// Temporary workaround until a better solution for this problem is found
-		// This + the csops hook should resolve all cases unless a tweak does something really stupid
 		jbclient_cs_revalidate();
 #endif
 	}

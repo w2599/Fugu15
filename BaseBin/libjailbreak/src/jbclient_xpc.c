@@ -172,7 +172,7 @@ char *realafpath(const char *restrict path, char *restrict resolved_path)
 		// Running realpath on stuff in /var/jb or on rootfs causes some processes, on some devices, to crash
 		// If it starts with /, it's not a relative path and we can skip calling realpath on it
 		// We only care about resolving relative paths, so we can skip anything that doesn't look like one
-		// As a side effect, we also ignore loader relative paths that start with (@rpath/@executable_path/@loader_path)
+		// Additionally, we also ignore loader relative paths that start with (@rpath/@executable_path/@loader_path)
 		if (!resolved_path) {
 			resolved_path = malloc(PATH_MAX);
 		}
