@@ -123,7 +123,7 @@ jobs:
 
       - name: Upload Latest Artifact
         id: dopamine-latest-upload
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@main
         with:
           name: Dopamine_Latest
           path: |
