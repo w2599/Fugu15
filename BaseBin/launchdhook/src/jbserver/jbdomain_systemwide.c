@@ -11,6 +11,7 @@
 #include <libjailbreak/primitives.h>
 #include <libjailbreak/codesign.h>
 
+extern bool stringStartsWith(const char *str, const char* prefix);
 extern bool stringEndsWith(const char* str, const char* suffix);
 
 static bool systemwide_domain_allowed(audit_token_t clientToken)
@@ -72,7 +73,7 @@ static int systemwide_trust_library(audit_token_t *processToken, const char *lib
 	return trust_file(libraryPath, callerLibraryPath, callerPath);
 }
 
-static int systemwide_process_checkin(audit_token_t *processToken, char **rootPathOut, char **bootUUIDOut, char **sandboxExtensionsOut)
+static int systemwide_process_checkin(audit_token_t *processToken, char **rootPathOut, char **bootUUIDOut, char **sandboxExtensionsOut, bool *fullyDebuggedOut)
 {
 	// Fetch process info
 	pid_t pid = audit_token_to_pid(*processToken);
@@ -87,20 +88,40 @@ static int systemwide_process_checkin(audit_token_t *processToken, char **rootPa
 	systemwide_get_boot_uuid(bootUUIDOut);
 
 	// Generate sandbox extensions for the requesting process
-	char *readExtension = sandbox_extension_issue_file_to_process("com.apple.app-sandbox.read", JBRootPath(""), 0, *processToken);
+
+	// transitd needs to write to /var/jb/var because rootlesshooks make it use that path instead of /var
+	bool writeAllowed = !strcmp(procPath, "/usr/libexec/transitd");
+
+	char *readWriteExtension = NULL;
+	if (writeAllowed) {
+		readWriteExtension = sandbox_extension_issue_file_to_process("com.apple.app-sandbox.read-write", JBRootPath(""), 0, *processToken);
+	}
+	else {
+		readWriteExtension = sandbox_extension_issue_file_to_process("com.apple.app-sandbox.read", JBRootPath(""), 0, *processToken);
+	}
 	char *execExtension = sandbox_extension_issue_file_to_process("com.apple.sandbox.executable", JBRootPath(""), 0, *processToken);
-	if (readExtension && execExtension) {
-		char extensionBuf[strlen(readExtension) + 1 + strlen(execExtension) + 1];
-		strcat(extensionBuf, readExtension);
+	if (readWriteExtension && execExtension) {
+		char extensionBuf[strlen(readWriteExtension) + 1 + strlen(execExtension) + 1];
+		strcpy(extensionBuf, readWriteExtension);
 		strcat(extensionBuf, "|");
 		strcat(extensionBuf, execExtension);
 		*sandboxExtensionsOut = strdup(extensionBuf);
 	}
-	if (readExtension) free(readExtension);
+	if (readWriteExtension) free(readWriteExtension);
 	if (execExtension) free(execExtension);
 
+	bool fullyDebugged = false;
+	if (stringStartsWith(procPath, "/private/var/containers/Bundle/Application") || stringStartsWith(procPath, JBRootPath("/Applications"))) {
+		// This is an app
+		// Enable CS_DEBUGGED based on user preference
+		if (jbsetting(markAppsAsDebugged)) {
+			fullyDebugged = true;
+		}
+	}
+	*fullyDebuggedOut = fullyDebugged;
+
 	// Allow invalid pages
-	cs_allow_invalid(proc, false);
+	cs_allow_invalid(proc, fullyDebugged);
 
 	// Fix setuid
 	struct stat sb;
@@ -290,6 +311,7 @@ struct jbserver_domain gSystemwideDomain = {
 				{ .name = "root-path", .type = JBS_TYPE_STRING, .out = true },
 				{ .name = "boot-uuid", .type = JBS_TYPE_STRING, .out = true },
 				{ .name = "sandbox-extensions", .type = JBS_TYPE_STRING, .out = true },
+				{ .name = "fully-debugged", .type = JBS_TYPE_BOOL, .out = true },
 				{ 0 },
 			},
 		},
