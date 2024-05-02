@@ -14,6 +14,41 @@
 extern bool stringStartsWith(const char *str, const char* prefix);
 extern bool stringEndsWith(const char* str, const char* suffix);
 
+char *combine_strings(char separator, char **components, int count)
+{
+	if (count <= 0) return NULL;
+
+	bool isFirst = true;
+
+	size_t outLength = 1;
+	for (int i = 0; i < count; i++) {
+		if (components[i]) {
+			outLength += !isFirst + strlen(components[i]);
+			if (isFirst) isFirst = false;
+		}
+	}
+
+	isFirst = true;
+	char *outString = malloc(outLength * sizeof(char));
+	*outString = 0;
+
+	for (int i = 0; i < count; i++) {
+		if (components[i]) {
+			if (isFirst) {
+				strlcpy(outString, components[i], outLength);
+				isFirst = false;
+			}
+			else {
+				char separatorString[2] = { separator, 0 };
+				strlcat(outString, (char *)separatorString, outLength);
+				strlcat(outString, components[i], outLength);
+			}
+		}
+	}
+
+	return outString;
+}
+
 static bool systemwide_domain_allowed(audit_token_t clientToken)
 {
 	return true;
@@ -89,26 +124,17 @@ static int systemwide_process_checkin(audit_token_t *processToken, char **rootPa
 
 	// Generate sandbox extensions for the requesting process
 
-	// transitd needs to write to /var/jb/var because rootlesshooks make it use that path instead of /var
-	bool writeAllowed = !strcmp(procPath, "/usr/libexec/transitd");
+	char *sandboxExtensionsArr[] = {
+		// Make /var/jb readable and executable
+		sandbox_extension_issue_file_to_process("com.apple.app-sandbox.read", JBRootPath(""), 0, *processToken),
+		sandbox_extension_issue_file_to_process("com.apple.sandbox.executable", JBRootPath(""), 0, *processToken),
 
-	char *readWriteExtension = NULL;
-	if (writeAllowed) {
-		readWriteExtension = sandbox_extension_issue_file_to_process("com.apple.app-sandbox.read-write", JBRootPath(""), 0, *processToken);
-	}
-	else {
-		readWriteExtension = sandbox_extension_issue_file_to_process("com.apple.app-sandbox.read", JBRootPath(""), 0, *processToken);
-	}
-	char *execExtension = sandbox_extension_issue_file_to_process("com.apple.sandbox.executable", JBRootPath(""), 0, *processToken);
-	if (readWriteExtension && execExtension) {
-		char extensionBuf[strlen(readWriteExtension) + 1 + strlen(execExtension) + 1];
-		strcpy(extensionBuf, readWriteExtension);
-		strcat(extensionBuf, "|");
-		strcat(extensionBuf, execExtension);
-		*sandboxExtensionsOut = strdup(extensionBuf);
-	}
-	if (readWriteExtension) free(readWriteExtension);
-	if (execExtension) free(execExtension);
+		// Make /var/jb/var/mobile writable
+		sandbox_extension_issue_file_to_process("com.apple.app-sandbox.read-write", JBRootPath("/var/mobile"), 0, *processToken),
+	};
+	int sandboxExtensionsCount = sizeof(sandboxExtensionsArr) / sizeof(char *);
+	*sandboxExtensionsOut = combine_strings('|', sandboxExtensionsArr, sandboxExtensionsCount);
+	for (int i = 0; i < sandboxExtensionsCount; i++) free(sandboxExtensionsArr[i]);
 
 	bool fullyDebugged = false;
 	if (stringStartsWith(procPath, "/private/var/containers/Bundle/Application") || stringStartsWith(procPath, JBRootPath("/Applications"))) {
