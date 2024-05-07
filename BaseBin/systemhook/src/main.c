@@ -32,6 +32,14 @@ int necp_session_action(int necp_fd, uint32_t action, uint8_t *in_buffer, size_t
 	(outPath); \
 })
 
+#define JBRootPathMnt(path) ({ \
+	char *outPath = alloca(PATH_MAX); \
+	strlcpy(outPath, JB_RootPath, PATH_MAX); \
+	strlcat(outPath, "/mnt", PATH_MAX); \
+	strlcat(outPath, path, PATH_MAX); \
+	(outPath); \
+})
+
 extern char **environ;
 bool gShouldFixFork = false;
 bool gFullyDebugged = false;

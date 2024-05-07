@@ -66,6 +66,14 @@ int exec_cmd_root(const char *binary, ...);
 	(outPath); \
 })
 
+#define JBRootPathMnt(path) ({ \
+	static char outPath[PATH_MAX]; \
+	strlcpy(outPath, jbinfo(rootPath), PATH_MAX); \
+	strlcat(outPath, "/mnt", PATH_MAX); \
+	strlcat(outPath, path, PATH_MAX); \
+	(outPath); \
+})
+
 #define VM_FLAGS_GET_PROT(x)    ((x >>  7) & 0xFULL)
 #define VM_FLAGS_GET_MAXPROT(x) ((x >> 11) & 0xFULL);
 #define VM_FLAGS_SET_PROT(x, p)    x = ((x & ~(0xFULL <<  7)) | (((uint64_t)p) <<  7))
@@ -73,6 +81,7 @@ int exec_cmd_root(const char *binary, ...);
 
 #ifdef __OBJC__
 NSString *NSJBRootPath(NSString *relativePath);
+NSString *NSJBRootPathMnt(NSString *relativePath);
 #endif
 
 void JBFixMobilePermissions(void);
