@@ -66,6 +66,14 @@ int exec_cmd_root(const char *binary, ...);
 	(outPath); \
 })
 
+#define JBRootPathMnt(path) ({ \
+	static char outPath[PATH_MAX]; \
+	strlcpy(outPath, jbinfo(rootPath), PATH_MAX); \
+	strlcat(outPath, "/mnt", PATH_MAX); \
+	strlcat(outPath, path, PATH_MAX); \
+	(outPath); \
+})
+
 char *boot_manifest_hash(void);
 
 #define prebootUUIDPath(path) ({ \
@@ -83,6 +91,7 @@ char *boot_manifest_hash(void);
 
 #ifdef __OBJC__
 NSString *NSJBRootPath(NSString *relativePath);
+NSString *NSJBRootPathMnt(NSString *relativePath);
 NSString *NSPrebootUUIDPath(NSString *relativePath);
 #endif
 

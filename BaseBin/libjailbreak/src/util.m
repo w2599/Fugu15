@@ -10,6 +10,16 @@ NSString *NSJBRootPath(NSString *relativePath)
 	}
 }
 
+NSString *NSJBRootPathMnt(NSString *relativePath)
+{
+	@autoreleasepool {
+		NSString *rootPath = [NSString stringWithUTF8String:jbinfo(rootPath)];
+		NSString *pathWithMnt = [rootPath stringByAppendingPathComponent:@"mnt"];
+		NSString *fullPath = [pathWithMnt stringByAppendingPathComponent:relativePath];
+		return fullPath;
+	}
+}
+
 NSString *NSPrebootUUIDPath(NSString *relativePath)
 {
 	@autoreleasepool {

@@ -48,7 +48,7 @@ void initMountPath(NSString *mountPath)
     bool new = NO;
 
     if([fileManager fileExistsAtPath:mountPath]){
-        NSString *newPath = NSJBRootPath(mountPath); 
+        NSString *newPath = NSJBRootPathMnt(mountPath); 
 
         if (![fileManager fileExistsAtPath:newPath]) {
             [fileManager createDirectoryAtPath:newPath withIntermediateDirectories:YES attributes:nil error:nil];
@@ -173,7 +173,7 @@ int jbctl_handle_internal(const char *command, int argc, char* argv[])
 			// This allows us to mount to paths that would otherwise be restricted by sandbox
 			printf("Applying mount %s...\n",argv[1]);
 			initMountPath([NSString stringWithUTF8String:argv[1]]);
-			ret = mount("bindfs", argv[1], MNT_RDONLY, (void *)JBRootPath(argv[1]));
+			ret = mount("bindfs", argv[1], MNT_RDONLY, (void *)JBRootPathMnt(argv[1]));
 			printf("ret = %d\n",ret);
 			// revert
 			printf("Dropping kernel ucred...\n");
