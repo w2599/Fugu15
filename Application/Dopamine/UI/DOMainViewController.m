@@ -176,20 +176,20 @@
         [self.jailbreakBtn.centerYAnchor constraintEqualToAnchor:buttonPlaceHolder.centerYAnchor]
     ])];
 
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC), dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
-        if ([[DOUIManager sharedInstance] environmentUpdateAvailable])
-        {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                [self setupUpdateAvailable:YES];
-            });
-        }
-        else if ([[DOUIManager sharedInstance] isUpdateAvailable])
-        {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                [self setupUpdateAvailable:NO];
-            });
-        }
-    });
+    // dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC), dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+    //     if ([[DOUIManager sharedInstance] environmentUpdateAvailable])
+    //     {
+    //         dispatch_async(dispatch_get_main_queue(), ^{
+    //             [self setupUpdateAvailable:YES];
+    //         });
+    //     }
+    //     else if ([[DOUIManager sharedInstance] isUpdateAvailable])
+    //     {
+    //         dispatch_async(dispatch_get_main_queue(), ^{
+    //             [self setupUpdateAvailable:NO];
+    //         });
+    //     }
+    // });
 }
 
 - (NSString *)jailbreakButtonTitle
