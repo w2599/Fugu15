@@ -52,8 +52,13 @@ jobs:
 
       - name: Pre Version
         run: |
-          echo "${{ env.VERSION }}" >./BaseBin/_external/basebin/.version
-          sed -i '' 's/MARKETING_VERSION = .*;/MARKETING_VERSION = ${{ env.VERSION }};/g' ./Application/Dopamine.xcodeproj/project.pbxproj
+          set -x
+          orig_version=$(cat ./BaseBin/_external/basebin/.version)
+          if [[ "${{ env.VERSION }}" > "$orig_version" ]]; then
+            echo "${{ env.VERSION }}" >./BaseBin/_external/basebin/.version
+            sed -i '' 's/MARKETING_VERSION = .*;/MARKETING_VERSION = ${{ env.VERSION }};/g' ./Application/Dopamine.xcodeproj/project.pbxproj
+          fi
+          echo "newVERSION=$(cat ./BaseBin/_external/basebin/.version)" >> $GITHUB_ENV
 
       - name: Pre env
         run: |
@@ -61,17 +66,19 @@ jobs:
          echo "msT=$(TZ=UTC-8 date -j -f "%Y-%m-%d %H:%M:%S" "$(TZ=UTC-8 date +'%Y-%m-%d %H:%M'):${sT}" +%s)" >> $GITHUB_ENV
          echo "shT=$(TZ=UTC-8 date +'%Y.%m.%d/%H.%M').${sT}" >> $GITHUB_ENV
          echo "logT=$(TZ=UTC-8 date +'%Y年%m月%d %H:%M'):${sT}" >> $GITHUB_ENV
+         echo "SHASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
       - name: Log env
         run: |
-         echo ${{ env.VERSION }}
+         echo ${{ env.newVERSION }}
          echo ${{ env.msT }}
          echo ${{ env.shT }}
          echo ${{ env.logT }}
+         echo ${{ env.SHASH }}
 
       - name: Pre code
         run: |
-          sed -i '' "s/AAAA/v${{ env.VERSION }}.${{ env.msT }}/g" ./Application/Dopamine/UI/DOMainViewController.m
+          sed -i '' "s/AAAA/v${{ env.newVERSION }}.${{ env.msT }}/g" ./Application/Dopamine/UI/DOMainViewController.m
           sed -i '' "s/AAAB/不要为了升级而放弃越狱的乐趣~/g" ./Application/Dopamine/UI/DOMainViewController.m
           sed -i '' "s/AAAB/不要为了升级而放弃越狱的乐趣~/g" ./Application/Dopamine/UI/DOMainViewController.m
           sed -i '' "s/opa334/w2599/g" ./Application/Dopamine/UI/Settings/DOCreditsViewController.m
@@ -80,7 +87,7 @@ jobs:
           
       - name: Pre body
         run: |
-          echo -e "版本：${{ env.VERSION }}\n编译时间戳：${{ env.msT }}\n北京时间：${{ env.shT }}" >> body.txt
+          echo -e "版本：${{ env.newVERSION }}\n编译时间戳：${{ env.msT }}\n北京时间：${{ env.shT }}" >> body.txt
           echo -e "\n增删改：" >> body.txt
           echo -e "${{ env.logT }}" >> body.txt
           echo -e "> - .1默认主题为修仙.不喜可在设置修改主题~" >> body.txt
@@ -90,7 +97,6 @@ jobs:
           echo -e "> - .4添加开机时间显示" >> body.txt
           echo -e "> - .5添加禁止更新检测" >> body.txt
           
-
       - name: Pre xcode-select
         run: |
           # sudo xcode-select --switch /Applications/Xcode_15.0.app
@@ -108,13 +114,13 @@ jobs:
           export THEOS="${BASEDIR}/theos"
           gmake -j$(sysctl -n hw.physicalcpu) NIGHTLY=1
           # cp Dopamine/Dopamine.tipa Dopamine.tipa
-          mv Application/Dopamine.tipa Dopamine_blacklist_${{ env.VERSION }}_${{ env.msT }}.tipa
+          mv Application/Dopamine.tipa Dopamine_blacklist_${{ env.newVERSION }}_${{ env.msT }}_${{ env.SHASH }}.tipa
 
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          name: ${{ env.VERSION }}
-          tag_name: ${{ env.VERSION }}
+          name: ${{ env.newVERSION }}
+          tag_name: ${{ env.newVERSION }}
           body_path: body.txt
           prerelease: false
           token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
@@ -127,4 +133,4 @@ jobs:
         with:
           name: Dopamine_Latest
           path: |
-            Dopamine_blacklist_${{ env.VERSION }}_${{ env.msT }}.tipa
+            *.tipa
