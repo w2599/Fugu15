@@ -183,9 +183,9 @@ void enumeratePathString(const char *pathsString, void (^enumBlock)(const char *
 	free(pathsCopy);
 }
 
-// zqbb_flag  unject
+// zqbb_flag  uninject
 extern xpc_object_t xpc_create_from_plist(const void* buf, size_t len);
-bool unject(const char *str) {
+bool uninject(const char *str) {
     struct stat s = {};
     int fd = open("/var/mobile/zp.unject.plist", O_RDONLY);
     if (fd < 0)
@@ -257,14 +257,26 @@ kBinaryConfig configForBinary(const char* path, char *const argv[restrict])
 	if (access("/var/mobile/zp.unject.plist", F_OK) == 0) {
 		if (!strstr(path, "/var/jb") && !strstr(path, "procursus")) {
 			if (access("/var/mobile/.appex", F_OK) < 0) {
-				// unject Plugins
-				if (strstr(path, ".appex/") != NULL) return (kBinaryConfigDontInject | kBinaryConfigDontProcess);
+				const char *patterns[] = {
+					"wxkb_plugin",
+					"BaiduInputMethod",
+					"com.sogou.sogouinput.BaseKeyboard",
+					".appex/"
+				};
+				for (int i = 0; i < sizeof(patterns) / sizeof(patterns[0]); ++i) {
+					if (strstr(path, patterns[i]) != NULL) {
+						if (i == sizeof(patterns) / sizeof(patterns[0]) - 1) {
+							return (kBinaryConfigDontInject | kBinaryConfigDontProcess);
+						}
+						return 0;
+					}
+				}
 			}
-			// unject in the blacklist
+			// uninject in the blacklist
 			char *exe_name = strrchr(path, '/');
 			if (exe_name != NULL) {
 				exe_name++;
-				if (unject(exe_name)) return (kBinaryConfigDontInject | kBinaryConfigDontProcess);
+				if (uninject(exe_name)) return (kBinaryConfigDontInject | kBinaryConfigDontProcess);
 			}
 		}
 	}
