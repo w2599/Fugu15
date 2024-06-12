@@ -17,7 +17,7 @@
 #import <sys/stat.h>
 #import "NSString+Version.h"
 
-#define LIBKRW_DOPAMINE_BUNDLED_VERSION @"2.0.2"
+#define LIBKRW_DOPAMINE_BUNDLED_VERSION @"2.0.3"
 #define LIBROOT_DOPAMINE_BUNDLED_VERSION @"1.0.1"
 #define BASEBIN_LINK_BUNDLED_VERSION @"1.0.0"
 
