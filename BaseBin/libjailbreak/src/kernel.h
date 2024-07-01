@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <mach/mach.h>
 #include "pvh.h"
+#include "info.h"
 
 #define CPSR_KERN_INTR_EN  (0x401000 | ((uint32_t)kconstant(kernel_el) << 2))
 #define CPSR_KERN_INTR_DIS (0x4013c0 | ((uint32_t)kconstant(kernel_el) << 2))
@@ -14,7 +15,7 @@
 #define PERM_KRW_URW 0x7 // R/W for kernel and user
 
 #define P_SUGID 0x00000100
-#define atop(x) ((vm_address_t)(x) >> PAGE_SHIFT)
+#define atop(x) ((vm_address_t)(x) >> vm_real_kernel_page_shift)
 typedef struct __attribute__((__packed__)) _vm_map_flags {
     unsigned int
         /* boolean_t */ wait_for_space:1,         /* Should callers wait for space? */
@@ -47,6 +48,7 @@ uint32_t proc_getcsflags(uint64_t proc);
 void proc_csflags_update(uint64_t proc, uint32_t flags);
 void proc_csflags_set(uint64_t proc, uint32_t flags);
 void proc_csflags_clear(uint64_t proc, uint32_t flags);
+int proc_csflags_patch(int pid);
 uint64_t ipc_entry_lookup(uint64_t space, mach_port_name_t name);
 uint64_t pa_index(uint64_t pa);
 uint64_t pai_to_pvh(uint64_t pai);
@@ -56,5 +58,8 @@ uint64_t mac_label_get(uint64_t label, int slot);
 void mac_label_set(uint64_t label, int slot, uint64_t value);
 int pmap_cs_allow_invalid(uint64_t pmap);
 int cs_allow_invalid(uint64_t proc, bool emulateFully);
+kern_return_t pmap_enter_options_addr(uint64_t pmap, uint64_t pa, uint64_t va);
+uint64_t pmap_remove_options(uint64_t pmap, uint64_t start, uint64_t end);
+void pmap_remove(uint64_t pmap, uint64_t start, uint64_t end);
 
 #endif

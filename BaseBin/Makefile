@@ -9,7 +9,7 @@
 
 all: basebin.tar
 
-subprojects: ChOma XPF opainject libjailbreak systemhook forkfix launchdhook boomerang jbctl idownloadd watchdoghook rootlesshooks
+subprojects: ChOma XPF opainject libjailbreak systemhook forkfix launchdhook boomerang jbctl idownloadd watchdoghook rootlesshooks libroot
 
 ChOma: .build .include
 	@$(MAKE) -C ChOma TARGET=ios DISABLE_SIGNING=1 DISABLE_TESTS=1 DYLIB_LDFLAGS="-install_name @loader_path/libchoma.dylib"
@@ -60,20 +60,32 @@ watchdoghook: .build .include libjailbreak
 	$(MAKE) -C watchdoghook
 	@cp watchdoghook/watchdoghook.dylib .build
 
-rootlesshooks: .build .include 
+rootlesshooks: .build .include libjailbreak
 	$(MAKE) -C rootlesshooks
 	@cp rootlesshooks/.theos/obj/rootlesshooks.dylib .build
+
+libroot: .build .include libjailbreak
+	@$(MAKE) -C ../Packages/libroot all
+	@cp ../Packages/libroot/libroot.dylib .build
+
 
 .build:
 	rm -rf .build
 	mkdir -p .build
 	cp -r _external/basebin/* .build
 	cp _external/basebin/.version .build
+ifeq ($(NIGHTLY), 1)
+	echo $(COMMIT_HASH) > .build/.version
+endif
 
 .include:
 	rm -rf .include
 	mkdir -p .include
 	cp -r _external/include/* .include
+# If the SDK already ships XPC (it does so in iOS 17.4+), remove the local copy of it
+ifneq (,$(wildcard $(shell xcrun --sdk iphoneos --show-sdk-path)/usr/include/xpc.modulemap))
+	rm -rf .include/xpc
+endif
 
 basebin.tc: subprojects
 	trustcache create .build/basebin.tc .build
@@ -95,9 +107,10 @@ clean:
 	@$(MAKE) -C idownloadd $@
 	@$(MAKE) -C watchdoghook $@
 	@$(MAKE) -C rootlesshooks $@
+	@$(MAKE) -C ../Packages/libroot clean
 	@rm -rf .build
 	@rm -rf .include
 	@rm -rf basebin.tar
 	@rm -rf basebin.tc
 
-.PHONY: clean .build .include ChOma XPF opainject libjailbreak systemhook forkfix launchdhook boomerang jbctl idownloadd watchdoghook rootlesshooks basebin.tc basebin.tar
+.PHONY: clean .build .include ChOma XPF opainject libjailbreak systemhook forkfix launchdhook boomerang jbctl idownloadd watchdoghook rootlesshooks libroot basebin.tc basebin.tar

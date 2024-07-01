@@ -85,6 +85,22 @@ void proc_csflags_clear(uint64_t proc, uint32_t flags)
 	proc_csflags_update(proc, proc_getcsflags(proc) & ~(uint32_t)flags);
 }
 
+// To replace dyld patch, make dyld respect DYLD_ environment variables
+int proc_csflags_patch(int pid)
+{
+    int ret = 0;
+    uint64_t proc = proc_find(pid);
+    if(proc) {
+        proc_csflags_set(proc, CS_GET_TASK_ALLOW);
+
+        // auto enable jit (suspend spawn)
+        cs_allow_invalid(proc, false);
+    } else {
+        ret = -1;
+    }
+    return ret;
+}
+
 uint64_t ipc_entry_lookup(uint64_t space, mach_port_name_t name)
 {
 	uint64_t table = 0;
@@ -151,33 +167,81 @@ int pmap_cs_allow_invalid(uint64_t pmap)
 
 int cs_allow_invalid(uint64_t proc, bool emulateFully)
 {
-	uint64_t task = proc_task(proc);
-	uint64_t vm_map = kread_ptr(task + koffsetof(task, map));
-	uint64_t pmap = kread_ptr(vm_map + koffsetof(vm_map, pmap));
-
-    // For non-pmap_cs (arm64) devices, this should always be emulated.
+	if (proc) {
+		uint64_t task = proc_task(proc);
+		if (task) {
+			uint64_t vm_map = kread_ptr(task + koffsetof(task, map));
+			if (vm_map) {
+				uint64_t pmap = kread_ptr(vm_map + koffsetof(vm_map, pmap));
+				if (pmap) {
+					// For non-pmap_cs (arm64) devices, this should always be emulated.
 #ifdef __arm64e__
-	if (emulateFully) {
+					if (emulateFully) {
 #endif
-		// Fugu15 Rootful
-		//proc_csflags_clear(proc, CS_EXEC_SET_ENFORCEMENT | CS_EXEC_SET_KILL | CS_EXEC_SET_HARD | CS_REQUIRE_LV | CS_ENFORCEMENT | CS_RESTRICT | CS_KILL | CS_HARD | CS_FORCED_LV);
-		//proc_csflags_set(proc, CS_DEBUGGED | CS_INVALID_ALLOWED | CS_GET_TASK_ALLOW);
+						// Fugu15 Rootful
+						//proc_csflags_clear(proc, CS_EXEC_SET_ENFORCEMENT | CS_EXEC_SET_KILL | CS_EXEC_SET_HARD | CS_REQUIRE_LV | CS_ENFORCEMENT | CS_RESTRICT | CS_KILL | CS_HARD | CS_FORCED_LV);
+						//proc_csflags_set(proc, CS_DEBUGGED | CS_INVALID_ALLOWED | CS_GET_TASK_ALLOW);
 
-		// XNU
-		proc_csflags_clear(proc, CS_KILL | CS_HARD);
-		proc_csflags_set(proc, CS_DEBUGGED);
+						// XNU
+						proc_csflags_clear(proc, CS_KILL | CS_HARD);
+						proc_csflags_set(proc, CS_DEBUGGED);
 
-		task_set_memory_ownership_transfer(task, true);
-		vm_map_flags flags = { 0 };
-		kreadbuf(vm_map + koffsetof(vm_map, flags), &flags, sizeof(flags));
-		flags.switch_protect = false;
-		flags.cs_debugged = true;
-		kwritebuf(vm_map + koffsetof(vm_map, flags), &flags, sizeof(flags));
+						task_set_memory_ownership_transfer(task, true);
+						vm_map_flags flags = { 0 };
+						kreadbuf(vm_map + koffsetof(vm_map, flags), &flags, sizeof(flags));
+						flags.switch_protect = false;
+						flags.cs_debugged = true;
+						kwritebuf(vm_map + koffsetof(vm_map, flags), &flags, sizeof(flags));
 #ifdef __arm64e__
+					}
+					// For pmap_cs (arm64e) devices, this is enough to get unsigned code to run
+					pmap_cs_allow_invalid(pmap);
+#endif
+				}
+			}
+		}
 	}
-
-	// For pmap_cs (arm64e) devices, this is enough to get unsigned code to run
-	pmap_cs_allow_invalid(pmap);
-#endif
 	return 0;
+}
+
+kern_return_t pmap_enter_options_addr(uint64_t pmap, uint64_t pa, uint64_t va)
+{
+	uint64_t kr = -1;
+	if (!is_kcall_available()) return kr;
+	while (1) {
+		kcall(&kr, ksymbol(pmap_enter_options_addr), 8, (uint64_t[]){ pmap, va, pa, VM_PROT_READ | VM_PROT_WRITE, 0, 0, 1, 1 });
+		if (kr != KERN_RESOURCE_SHORTAGE) {
+			return kr;
+		}
+	}
+}
+
+uint64_t pmap_remove_options(uint64_t pmap, uint64_t start, uint64_t end)
+{
+	uint64_t r = -1;
+	if (!is_kcall_available()) return r;
+	kcall(&r, ksymbol(pmap_remove_options), 4, (uint64_t[]){ pmap, start, end, 0x100 });
+	return r;
+}
+
+void pmap_remove(uint64_t pmap, uint64_t start, uint64_t end)
+{
+#ifdef __arm64e__
+	pmap_remove_options(pmap, start, end);
+#else
+    uint64_t remove_count = 0;
+    if (!pmap) {
+        return;
+    }
+    uint64_t va = start;
+    while (va < end) {
+        uint64_t l;
+        l = ((va + L2_BLOCK_SIZE) & ~L2_BLOCK_MASK);
+        if (l > end) {
+            l = end;
+        }
+        remove_count = pmap_remove_options(pmap, va, l);
+        va = remove_count;
+    }
+#endif
 }

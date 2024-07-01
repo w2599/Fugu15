@@ -12,6 +12,7 @@
 #import "DODownloadViewController.h"
 #import "DOUIManager.h"
 #import "DOEnvironmentManager.h"
+#import <CoreServices/LSApplicationProxy.h>
 
 @interface DOUpdateViewController ()
 
@@ -94,32 +95,16 @@
 
     BOOL envUpdate = [[DOUIManager sharedInstance] environmentUpdateAvailable];
     
-    self.button = [DOActionMenuButton buttonWithAction:[UIAction actionWithTitle:DOLocalizedString(envUpdate ? @"Button_Update_Environment" : @"Button_Update") image:[UIImage systemImageNamed:@"arrow.down" withConfiguration:[DOGlobalAppearance smallIconImageConfiguration]] identifier:@"update" handler:^(__kindof UIAction * _Nonnull action) {
+    self.button = [DOActionMenuButton buttonWithAction:[UIAction actionWithTitle:DOLocalizedString(envUpdate ? @"Button_Reboot_Device" : @"Button_Update") image:[UIImage systemImageNamed:(envUpdate ? @"arrow.clockwise.circle" : @"arrow.down") withConfiguration:[DOGlobalAppearance smallIconImageConfiguration]] identifier:@"update" handler:^(__kindof UIAction * _Nonnull action) {
         if (envUpdate)
         {
-            self.button.enabled = NO;
-            self.button.alpha = 0.5;
-            NSError *error = [[DOEnvironmentManager sharedManager] updateEnvironment];
-            if (error)
-            {
-                UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Error Updating Basebin" message:error.localizedDescription preferredStyle:UIAlertControllerStyleAlert];
-                [alert addAction:[UIAlertAction actionWithTitle:DOLocalizedString(@"Button_Close") style:UIAlertActionStyleDefault handler:nil]];
-                [self presentViewController:alert animated:YES completion:nil];
-            }
-            return;
+            [[DOEnvironmentManager sharedManager] reboot];
         }
-
-        if (![DOEnvironmentManager sharedManager].isJailbroken || [[DOUIManager sharedInstance] launchedReleaseNeedsManualUpdate] || ![DOEnvironmentManager sharedManager].isInstalledThroughTrollStore)
+        else
         {
-            [[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"https://github.com/opa334/Dopamine/releases"] options:@{} completionHandler:nil];
-            return;
+            [[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"https://github.com/roothide/Dopamine2-roothide"] options:@{} completionHandler:nil];
         }
-
-        DODownloadViewController *downloadVC = [[DODownloadViewController alloc] initWithUrl:self.lastestDownloadUrl callback:^(NSURL * _Nonnull file) {
-            NSLog(@"Downloaded %@", file);
-            [[DOEnvironmentManager sharedManager] updateJailbreakFromTIPA:file.path];
-        }];
-        [(UINavigationController*)(self.parentViewController) pushViewController:downloadVC animated:YES];
+        
     }] chevron:NO];
     
     self.button.translatesAutoresizingMaskIntoConstraints = NO;
@@ -165,8 +150,20 @@
         NSDictionary *release = (NSDictionary*)obj;
         NSString *name = release[@"name"];
         NSString *body = release[@"body"];
-        [changelogText appendAttributedString:[[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"%@\n", name] attributes:@{NSFontAttributeName: [UIFont boldSystemFontOfSize:18], NSForegroundColorAttributeName : [UIColor whiteColor], NSParagraphStyleAttributeName:paragraphStyle}]];
-        [changelogText appendAttributedString:[[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"\n%@\n\n\n", body] attributes:@{NSFontAttributeName: [UIFont systemFontOfSize:16], NSForegroundColorAttributeName : [UIColor whiteColor], NSParagraphStyleAttributeName:paragraphStyle}]];
+        [changelogText appendAttributedString:[[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"Version %@\n", name] attributes:@{NSFontAttributeName: [UIFont boldSystemFontOfSize:18], NSForegroundColorAttributeName : [UIColor whiteColor], NSParagraphStyleAttributeName:paragraphStyle}]];
+        [changelogText appendAttributedString:[[NSAttributedString alloc] initWithString:@"\n"]];
+        
+        NSAttributedStringMarkdownParsingOptions *parsingOptions = [[NSAttributedStringMarkdownParsingOptions alloc] init];
+        parsingOptions.allowsExtendedAttributes = YES;
+        parsingOptions.interpretedSyntax = NSAttributedStringMarkdownInterpretedSyntaxInlineOnlyPreservingWhitespace;
+
+        NSMutableAttributedString *markdownStringMut = [[NSAttributedString alloc] initWithMarkdownString:body options:parsingOptions baseURL:nil error:nil].mutableCopy;
+        
+        [markdownStringMut addAttributes:@{NSFontAttributeName: [UIFont systemFontOfSize:16], NSForegroundColorAttributeName : [UIColor whiteColor], NSParagraphStyleAttributeName:paragraphStyle} range:NSMakeRange(0, markdownStringMut.length)];
+
+        [changelogText appendAttributedString:markdownStringMut];
+        
+        [changelogText appendAttributedString:[[NSAttributedString alloc] initWithString:@"\n\n\n"]];
         if (idx == 0)
         {
             NSArray *assets = release[@"assets"];

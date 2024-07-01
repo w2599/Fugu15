@@ -61,6 +61,33 @@ void jbinfo_initialize_hardcoded_offsets(void)
 	// filedesc
 	gSystemInfo.kernelStruct.filedesc.ofiles_start = 0x20;
 
+    // file
+    gSystemInfo.kernelStruct.fileproc.fileglob = 0x10;
+    gSystemInfo.kernelStruct.fileglob.vnode = 0x38;
+
+    // file
+    gSystemInfo.kernelStruct.fileproc.fileglob = 0x10;
+    gSystemInfo.kernelStruct.fileglob.vnode = 0x38;
+
+    // vnode
+    gSystemInfo.kernelStruct.vnode.id = 0x74;
+    gSystemInfo.kernelStruct.vnode.usecount = 0x60;
+    gSystemInfo.kernelStruct.vnode.ncchildren.tqh_first = 0x30;
+    gSystemInfo.kernelStruct.vnode.ncchildren.tqh_last = 0x38;
+    gSystemInfo.kernelStruct.vnode.parent = 0xc0;
+    gSystemInfo.kernelStruct.vnode.nclinks.lh_first = 0x40;
+
+    // namecache
+    gSystemInfo.kernelStruct.namecache.smr = false;
+    gSystemInfo.kernelStruct.namecache.child.tqe_next = 0x10;
+    gSystemInfo.kernelStruct.namecache.child.tqe_prev = 0x18;
+    gSystemInfo.kernelStruct.namecache.hash.le_next = 0x30;
+    gSystemInfo.kernelStruct.namecache.hash.le_prev = 0x38;
+    gSystemInfo.kernelStruct.namecache.dvp = 0x40;
+    gSystemInfo.kernelStruct.namecache.vp = 0x48;
+    gSystemInfo.kernelStruct.namecache.hashval = 0x50;
+    gSystemInfo.kernelStruct.namecache.name = 0x58;
+
 	// task
 	gSystemInfo.kernelStruct.task.map     = 0x28;
 	gSystemInfo.kernelStruct.task.threads = 0x60;
@@ -80,13 +107,25 @@ void jbinfo_initialize_hardcoded_offsets(void)
 	gSystemInfo.kernelStruct.pmap.tte        = 0x0;
 	gSystemInfo.kernelStruct.pmap.ttep       = 0x8;
 #ifdef __arm64e__
-	gSystemInfo.kernelStruct.pmap.sw_asid    = 0xBE + pmapEl2Adjust;
-	gSystemInfo.kernelStruct.pmap.wx_allowed = 0xC2 + pmapEl2Adjust;
-	gSystemInfo.kernelStruct.pmap.type       = 0xC8 + pmapEl2Adjust;
+	gSystemInfo.kernelStruct.pmap.pmap_cs_main = 0x90;
+	gSystemInfo.kernelStruct.pmap.sw_asid      = 0xBE + pmapEl2Adjust;
+	gSystemInfo.kernelStruct.pmap.wx_allowed   = 0xC2 + pmapEl2Adjust;
+	gSystemInfo.kernelStruct.pmap.type         = 0xC8 + pmapEl2Adjust;
 #else
 	gSystemInfo.kernelStruct.pmap.sw_asid    = 0x96;
 	gSystemInfo.kernelStruct.pmap.wx_allowed = 0;
 	gSystemInfo.kernelStruct.pmap.type       = 0x9c + pmapA11Adjust;
+#endif
+
+#ifdef __arm64e__
+	// pmap_cs_region
+	gSystemInfo.kernelStruct.pmap_cs_region.pmap_cs_region_next = 0x0;
+	gSystemInfo.kernelStruct.pmap_cs_region.cd_entry            = 0x28;
+
+	// pmap_cs_code_directory
+	gSystemInfo.kernelStruct.pmap_cs_code_directory.pmap_cs_code_directory_next = 0x0;
+	gSystemInfo.kernelStruct.pmap_cs_code_directory.main_binary                 = 0x50;
+	gSystemInfo.kernelStruct.pmap_cs_code_directory.trust                       = 0x9C;
 #endif
 
 	// pt_desc
@@ -222,14 +261,32 @@ void jbinfo_initialize_hardcoded_offsets(void)
 					gSystemInfo.kernelStruct.pmap.type       = 0x94 + pmapA11Adjust;
 #endif
 
+#ifdef __arm64e__
+					// pmap_cs_code_directory
+					gSystemInfo.kernelStruct.pmap_cs_code_directory.main_binary = 0x190;
+					gSystemInfo.kernelStruct.pmap_cs_code_directory.trust       = 0x1DC;
+#endif
+
 					if (strcmp(xnuVersion, "22.1.0") >= 0) { // iOS 16.1+
 						gSystemInfo.kernelStruct.ipc_space.table_uses_smr = true;
 						if (strcmp(xnuVersion, "22.3.0") >= 0) { // iOS 16.3+
 							gSystemInfo.kernelConstant.smrBase = 2;
 							if (strcmp(xnuVersion, "22.4.0") >= 0) { // iOS 16.4+
+                                // namecache
+                                gSystemInfo.kernelStruct.namecache.smr = true;
+                                gSystemInfo.kernelStruct.namecache.dvp = 0x48;
+                                gSystemInfo.kernelStruct.namecache.vp = 0x50;
+                                gSystemInfo.kernelStruct.namecache.hashval = 0x58;
+                                gSystemInfo.kernelStruct.namecache.name = 0x60;
+
 								// proc
 								gSystemInfo.kernelStruct.proc.flag   = 0x454;
 								gSystemInfo.kernelStruct.proc.textvp = 0x548;
+
+#ifdef __arm64e__
+								// pmap_cs_code_directory
+								gSystemInfo.kernelStruct.pmap_cs_code_directory.trust = 0x1EC;
+#endif
 
 								if (strcmp(xnuVersion, "22.4.0") == 0) { // iOS 16.4 ONLY 
 									// iOS 16.4 beta 1-3 use the old proc struct, 16.4b4+ use new
@@ -262,4 +319,101 @@ xpc_object_t jbinfo_get_serialized(void)
 	xpc_object_t systemInfo = xpc_dictionary_create_empty();
 	SYSTEM_INFO_SERIALIZE(systemInfo);
 	return systemInfo;
+}
+
+uint64_t get_vm_real_kernel_page_size(void)
+{
+	static uint64_t real_kernel_page_size = 0;
+	static dispatch_once_t onceToken;
+	dispatch_once(&onceToken, ^{
+		real_kernel_page_size = vm_kernel_page_size;
+
+		// vm_kernel_page_size is WRONG on A8X
+		// Screw Apple
+		cpu_subtype_t cpuFamily = 0;
+		size_t cpuFamilySize = sizeof(cpuFamily);
+		sysctlbyname("hw.cpufamily", &cpuFamily, &cpuFamilySize, NULL, 0);
+		if (cpuFamily == CPUFAMILY_ARM_TYPHOON) {
+			real_kernel_page_size = 0x1000;
+		}
+	});
+	return real_kernel_page_size;
+}
+
+
+uint64_t get_vm_real_kernel_page_shift(void)
+{
+	static uint64_t real_kernel_page_shift = 0;
+	static dispatch_once_t onceToken;
+	dispatch_once(&onceToken, ^{
+		real_kernel_page_shift = vm_kernel_page_shift;
+
+		// vm_kernel_page_shift is WRONG on A8X
+		// Screw Apple
+		cpu_subtype_t cpuFamily = 0;
+		size_t cpuFamilySize = sizeof(cpuFamily);
+		sysctlbyname("hw.cpufamily", &cpuFamily, &cpuFamilySize, NULL, 0);
+		if (cpuFamily == CPUFAMILY_ARM_TYPHOON) {
+			real_kernel_page_shift = 14;
+		}
+	});
+	return real_kernel_page_shift;
+}
+
+uint64_t get_l1_block_size(void)
+{
+	switch (vm_real_kernel_page_size) {
+		case 0x4000:
+		return 0x1000000000;
+		case 0x1000:
+		return 0x40000000;
+		default:
+		return 0;
+	}
+}
+
+uint64_t get_l1_block_mask(void)
+{
+	return get_l1_block_size() - 1;
+}
+
+uint64_t get_l1_block_count(void)
+{
+	switch (vm_real_kernel_page_size) {
+		case 0x4000:
+		return 8;
+		case 0x1000:
+		return 256;
+		default:
+		return 0;
+	}
+}
+
+uint64_t get_l2_block_size(void)
+{
+	switch (vm_real_kernel_page_size) {
+		case 0x4000:
+		return 0x2000000;
+		case 0x1000:
+		return 0x200000;
+		default:
+		return 0;
+	}
+}
+
+uint64_t get_l2_block_mask(void)
+{
+	return get_l2_block_size() - 1;
+}
+
+uint64_t get_l2_block_count(void)
+{
+	switch (vm_real_kernel_page_size) {
+		case 0x4000:
+		return 2048;
+		case 0x1000:
+		return 512;
+		default:
+		return 0;
+	}
 }

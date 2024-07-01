@@ -10,8 +10,50 @@
 #include <libjailbreak/util.h>
 #include <libjailbreak/primitives.h>
 #include <libjailbreak/codesign.h>
+#include <signal.h>
 
+#include "exec_patch.h"
+#include "libjailbreak/log.h"
+
+extern bool stringStartsWith(const char *str, const char* prefix);
 extern bool stringEndsWith(const char* str, const char* suffix);
+
+#define APP_PATH_PREFIX "/private/var/containers/Bundle/Application/"
+
+static bool is_app_path(const char* path)
+{
+    if(!path) return false;
+
+    char rp[PATH_MAX];
+    if(!realpath(path, rp)) return false;
+
+    if(strncmp(rp, APP_PATH_PREFIX, sizeof(APP_PATH_PREFIX)-1) != 0)
+        return false;
+
+    char* p1 = rp + sizeof(APP_PATH_PREFIX)-1;
+    char* p2 = strchr(p1, '/');
+    if(!p2) return false;
+
+    //is normal app or jailbroken app/daemon?
+    if((p2 - p1) != (sizeof("xxxxxxxx-xxxx-xxxx-yxxx-xxxxxxxxxxxx")-1))
+        return false;
+
+	return true;
+}
+
+bool is_sub_path(const char* parent, const char* child)
+{
+	char real_child[PATH_MAX]={0};
+	char real_parent[PATH_MAX]={0};
+
+	if(!realpath(child, real_child)) return false;
+	if(!realpath(parent, real_parent)) return false;
+
+	if(!stringStartsWith(real_child, real_parent))
+		return false;
+
+	return real_child[strlen(real_parent)] == '/';
+}
 
 static bool systemwide_domain_allowed(audit_token_t clientToken)
 {
@@ -31,7 +73,7 @@ static int systemwide_get_boot_uuid(char **bootUUIDOut)
 	return 0;
 }
 
-static int trust_file(const char *filePath, const char *dlopenCallerImagePath, const char *dlopenCallerExecutablePath)
+static int trust_file(const char *filePath, const char *dlopenCallerImagePath, const char *dlopenCallerExecutablePath, xpc_object_t preferredArchsArray)
 {
 	// Shared logic between client and server, implemented in client
 	// This should essentially mean these files never reach us in the first place
@@ -40,9 +82,23 @@ static int trust_file(const char *filePath, const char *dlopenCallerImagePath, c
 
 	if (can_skip_trusting_file(filePath, (bool)dlopenCallerExecutablePath, false)) return -1;
 
+	size_t preferredArchCount = 0;
+	if (preferredArchsArray) preferredArchCount = xpc_array_get_count(preferredArchsArray);
+	uint32_t preferredArchTypes[preferredArchCount];
+	uint32_t preferredArchSubtypes[preferredArchCount];
+	for (size_t i = 0; i < preferredArchCount; i++) {
+		preferredArchTypes[i] = 0;
+		preferredArchSubtypes[i] = UINT32_MAX;
+		xpc_object_t arch = xpc_array_get_value(preferredArchsArray, i);
+		if (xpc_get_type(arch) == XPC_TYPE_DICTIONARY) {
+			preferredArchTypes[i] = xpc_dictionary_get_uint64(arch, "type");
+			preferredArchSubtypes[i] = xpc_dictionary_get_uint64(arch, "subtype");
+		}
+	}
+
 	cdhash_t *cdhashes = NULL;
 	uint32_t cdhashesCount = 0;
-	macho_collect_untrusted_cdhashes(filePath, dlopenCallerImagePath, dlopenCallerExecutablePath, &cdhashes, &cdhashesCount);
+	macho_collect_untrusted_cdhashes(filePath, dlopenCallerImagePath, dlopenCallerExecutablePath, preferredArchTypes, preferredArchSubtypes, preferredArchCount, &cdhashes, &cdhashesCount);
 	if (cdhashes && cdhashesCount > 0) {
 		jb_trustcache_add_cdhashes(cdhashes, cdhashesCount);
 		free(cdhashes);
@@ -51,9 +107,9 @@ static int trust_file(const char *filePath, const char *dlopenCallerImagePath, c
 }
 
 // Not static because launchd will directly call this from it's posix_spawn hook
-int systemwide_trust_binary(const char *binaryPath)
+int systemwide_trust_binary(const char *binaryPath, xpc_object_t preferredArchsArray)
 {
-	return trust_file(binaryPath, NULL, NULL);
+	return trust_file(binaryPath, NULL, NULL, preferredArchsArray);
 }
 
 static int systemwide_trust_library(audit_token_t *processToken, const char *libraryPath, const char *callerLibraryPath)
@@ -69,16 +125,49 @@ static int systemwide_trust_library(audit_token_t *processToken, const char *lib
 	// This is to support dlopen("@executable_path/whatever", RTLD_NOW) and stuff like that
 	// (Yes that is a thing >.<)
 	// Also we need to pass the path of the image that called dlopen due to @loader_path, sigh...
-	return trust_file(libraryPath, callerLibraryPath, callerPath);
+	return trust_file(libraryPath, callerLibraryPath, callerPath, NULL);
 }
 
-static int systemwide_process_checkin(audit_token_t *processToken, char **rootPathOut, char **bootUUIDOut, char **sandboxExtensionsOut)
+char* generate_sandbox_extensions(audit_token_t *processToken, bool writable)
+{
+	char* sandboxExtensionsOut=NULL;
+	char jbrootbase[PATH_MAX];
+	char jbrootsecondary[PATH_MAX];
+	snprintf(jbrootbase, sizeof(jbrootbase), "/private/var/containers/Bundle/Application/.jbroot-%016llX/", jbinfo(jbrand));
+	snprintf(jbrootsecondary, sizeof(jbrootsecondary), "/private/var/mobile/Containers/Shared/AppGroup/.jbroot-%016llX/", jbinfo(jbrand));
+
+	char* fileclass = writable ? "com.apple.app-sandbox.read-write" : "com.apple.app-sandbox.read";
+
+	char *readExtension = sandbox_extension_issue_file_to_process("com.apple.app-sandbox.read", jbrootbase, 0, *processToken);
+	char *execExtension = sandbox_extension_issue_file_to_process("com.apple.sandbox.executable", jbrootbase, 0, *processToken);
+	char *readExtension2 = sandbox_extension_issue_file_to_process(fileclass, jbrootsecondary, 0, *processToken);
+	if (readExtension && execExtension && readExtension2) {
+		char extensionBuf[strlen(readExtension) + 1 + strlen(execExtension) + strlen(readExtension2) + 1];
+		strcat(extensionBuf, readExtension);
+		strcat(extensionBuf, "|");
+		strcat(extensionBuf, execExtension);
+		strcat(extensionBuf, "|");
+		strcat(extensionBuf, readExtension2);
+		sandboxExtensionsOut = strdup(extensionBuf);
+	}
+	if (readExtension) free(readExtension);
+	if (execExtension) free(execExtension);
+	if (readExtension2) free(readExtension2);
+	return sandboxExtensionsOut;
+}
+
+static int systemwide_process_checkin(audit_token_t *processToken, char **rootPathOut, char **bootUUIDOut, char **sandboxExtensionsOut, bool *fullyDebuggedOut)
 {
 	// Fetch process info
 	pid_t pid = audit_token_to_pid(*processToken);
-	uint64_t proc = proc_find(pid);
 	char procPath[4*MAXPATHLEN];
-	if (proc_pidpath(pid, procPath, sizeof(procPath)) < 0) {
+	if (proc_pidpath(pid, procPath, sizeof(procPath)) <= 0) {
+		return -1;
+	}
+
+	// Find proc in kernelspace
+	uint64_t proc = proc_find(pid);
+	if (!proc) {
 		return -1;
 	}
 
@@ -86,21 +175,24 @@ static int systemwide_process_checkin(audit_token_t *processToken, char **rootPa
 	systemwide_get_jbroot(rootPathOut);
 	systemwide_get_boot_uuid(bootUUIDOut);
 
-	// Generate sandbox extensions for the requesting process
-	char *readExtension = sandbox_extension_issue_file_to_process("com.apple.app-sandbox.read", JBRootPath(""), 0, *processToken);
-	char *execExtension = sandbox_extension_issue_file_to_process("com.apple.sandbox.executable", JBRootPath(""), 0, *processToken);
-	if (readExtension && execExtension) {
-		char extensionBuf[strlen(readExtension) + 1 + strlen(execExtension) + 1];
-		strcat(extensionBuf, readExtension);
-		strcat(extensionBuf, "|");
-		strcat(extensionBuf, execExtension);
-		*sandboxExtensionsOut = strdup(extensionBuf);
-	}
-	if (readExtension) free(readExtension);
-	if (execExtension) free(execExtension);
 
+	struct statfs fs;
+	bool isPlatformProcess = statfs(procPath, &fs)==0 && strcmp(fs.f_mntonname, "/private/var") != 0;
+
+	// Generate sandbox extensions for the requesting process
+	*sandboxExtensionsOut = generate_sandbox_extensions(processToken, isPlatformProcess);
+
+	bool fullyDebugged = false;
+	if (is_app_path(procPath) || is_sub_path(JBRootPath("/Applications"), procPath)) {
+		// This is an app, enable CS_DEBUGGED based on user preference
+		if (jbsetting(markAppsAsDebugged)) {
+			fullyDebugged = true;
+		}
+	}
+	*fullyDebuggedOut = fullyDebugged;
+	
 	// Allow invalid pages
-	cs_allow_invalid(proc, false);
+	cs_allow_invalid(proc, fullyDebugged);
 
 	// Fix setuid
 	struct stat sb;
@@ -153,16 +245,42 @@ static int systemwide_process_checkin(audit_token_t *processToken, char **rootPa
 	// For the Dopamine app itself we want to give it a saved uid/gid of 0, unsandbox it and give it CS_PLATFORM_BINARY
 	// This is so that the buttons inside it can work when jailbroken, even if the app was not installed by TrollStore
 	else if (stringEndsWith(procPath, "/Dopamine.app/Dopamine")) {
-		// svuid = 0, svgid = 0
-		uint64_t ucred = proc_ucred(proc);
-		kwrite32(proc + koffsetof(proc, svuid), 0);
-		kwrite32(ucred + koffsetof(ucred, svuid), 0);
-		kwrite32(proc + koffsetof(proc, svgid), 0);
-		kwrite32(ucred + koffsetof(ucred, svgid), 0);
+		char roothidefile[PATH_MAX];
+		snprintf(roothidefile, sizeof(roothidefile), "%s.roothide",procPath);
+		if(access(roothidefile, F_OK)==0) {
+			// svuid = 0, svgid = 0
+			uint64_t ucred = proc_ucred(proc);
+			kwrite32(proc + koffsetof(proc, svuid), 0);
+			kwrite32(ucred + koffsetof(ucred, svuid), 0);
+			kwrite32(proc + koffsetof(proc, svgid), 0);
+			kwrite32(ucred + koffsetof(ucred, svgid), 0);
 
-		// platformize
-		proc_csflags_set(proc, CS_PLATFORM_BINARY);
+			// platformize
+			proc_csflags_set(proc, CS_PLATFORM_BINARY);
+		} else {
+			kill(pid, SIGKILL);
+		}
 	}
+
+#ifdef __arm64e__
+	// On arm64e every image has a trust level associated with it
+	// "In trust cache" trust levels have higher runtime enforcements, this can be a problem for some tools as Dopamine trustcaches everything that's adhoc signed
+	// So we add the ability for a binary to get a different trust level using the "jb.pmap_cs_custom_trust" entitlement
+	// This is for binaries that rely on weaker PMAP_CS checks (e.g. Lua trampolines need it)
+	xpc_object_t customTrustObj = xpc_copy_entitlement_for_token("jb.pmap_cs.custom_trust", processToken);
+	if (customTrustObj) {
+		if (xpc_get_type(customTrustObj) == XPC_TYPE_STRING) {
+			const char *customTrustStr = xpc_string_get_string_ptr(customTrustObj);
+			uint32_t customTrust = pmap_cs_trust_string_to_int(customTrustStr);
+			if (customTrust >= 2) {
+				uint64_t mainCodeDir = proc_find_main_binary_code_dir(proc);
+				if (mainCodeDir) {
+					kwrite32(mainCodeDir + koffsetof(pmap_cs_code_directory, trust), customTrust);
+				}
+			}
+		}
+	}
+#endif
 
 	proc_rele(proc);
 	return 0;
@@ -245,6 +363,58 @@ static int systemwide_cs_revalidate(audit_token_t *callerToken)
 	return -1;
 }
 
+static int systemwide_cs_drop_get_task_allow(audit_token_t *callerToken)
+{
+    uint64_t callerPid = audit_token_to_pid(*callerToken);
+    if (callerPid > 0) {
+        uint64_t callerProc = proc_find(callerPid);
+        if (callerProc) {
+            proc_csflags_clear(callerProc, CS_GET_TASK_ALLOW);
+            return 0;
+        }
+    }
+    return -1;
+}
+
+static int systemwide_patch_spawn(audit_token_t *callerToken, int pid, bool resume)
+{
+    uint64_t callerPid = audit_token_to_pid(*callerToken);
+    if (callerPid > 0) {
+        pid_t ppid = proc_get_ppid(pid);
+        if (callerPid == ppid) {
+            JBLogDebug("spawn patch: %d -> %d:%d resume=%d", callerPid, pid, ppid, resume);
+            if (proc_csflags_patch(pid) == 0){
+                if(resume)
+                    kill(pid, SIGCONT);
+                return 0;
+            }
+        }else{
+            JBLogError("spawn patch denied: %d -> %d:%d", callerPid, pid, ppid);
+        }
+    }
+    return -1;
+}
+
+static int systemwide_patch_exec_add(audit_token_t *callerToken, const char* exec_path, bool resume)
+{
+    uint64_t callerPid = audit_token_to_pid(*callerToken);
+    if (callerPid > 0) {
+        patchExecAdd((int)callerPid, exec_path, resume);
+        return 0;
+    }
+    return -1;
+}
+
+static int systemwide_patch_exec_del(audit_token_t *callerToken, const char* exec_path)
+{
+    uint64_t callerPid = audit_token_to_pid(*callerToken);
+    if (callerPid > 0){
+        patchExecDel((int)callerPid, exec_path);
+        return 0;
+    }
+    return -1;
+}
+
 struct jbserver_domain gSystemwideDomain = {
 	.permissionHandler = systemwide_domain_allowed,
 	.actions = {
@@ -269,6 +439,7 @@ struct jbserver_domain gSystemwideDomain = {
 			.handler = systemwide_trust_binary,
 			.args = (jbserver_arg[]){
 				{ .name = "binary-path", .type = JBS_TYPE_STRING, .out = false },
+				{ .name = "preferred-archs", .type = JBS_TYPE_ARRAY, .out = false },
 				{ 0 },
 			},
 		},
@@ -290,6 +461,7 @@ struct jbserver_domain gSystemwideDomain = {
 				{ .name = "root-path", .type = JBS_TYPE_STRING, .out = true },
 				{ .name = "boot-uuid", .type = JBS_TYPE_STRING, .out = true },
 				{ .name = "sandbox-extensions", .type = JBS_TYPE_STRING, .out = true },
+				{ .name = "fully-debugged", .type = JBS_TYPE_BOOL, .out = true },
 				{ 0 },
 			},
 		},
@@ -310,6 +482,47 @@ struct jbserver_domain gSystemwideDomain = {
 				{ 0 },
 			},
 		},
+        // JBS_SYSTEMWIDE_CS_DROP_GET_TASK_ALLOW
+        {
+            // .action = JBS_SYSTEMWIDE_CS_DROP_GET_TASK_ALLOW,
+            .handler = systemwide_cs_drop_get_task_allow,
+            .args = (jbserver_arg[]) {
+                    { .name = "caller-token", .type = JBS_TYPE_CALLER_TOKEN, .out = false },
+                    { 0 },
+            },
+        },
+        // JBS_SYSTEMWIDE_PATCH_SPAWN
+        {
+            // .action = JBS_SYSTEMWIDE_PATCH_SPAWN,
+            .handler = systemwide_patch_spawn,
+            .args = (jbserver_arg[]) {
+                    { .name = "caller-token", .type = JBS_TYPE_CALLER_TOKEN, .out = false },
+                    { .name = "pid", .type = JBS_TYPE_UINT64, .out = false },
+                    { .name = "resume", .type = JBS_TYPE_BOOL, .out = false },
+                    { 0 },
+            },
+        },
+        // JBS_SYSTEMWIDE_PATCH_EXEC_ADD
+        {
+            // .action = JBS_SYSTEMWIDE_PATCH_EXEC_ADD,
+            .handler = systemwide_patch_exec_add,
+            .args = (jbserver_arg[]) {
+                    { .name = "caller-token", .type = JBS_TYPE_CALLER_TOKEN, .out = false },
+                    { .name = "exec-path", .type = JBS_TYPE_STRING, .out = false },
+                    { .name = "resume", .type = JBS_TYPE_BOOL, .out = false },
+                    { 0 },
+            },
+        },
+        // JBS_SYSTEMWIDE_PATCH_EXEC_DEL
+        {
+            // .action = JBS_SYSTEMWIDE_PATCH_EXEC_DEL,
+            .handler = systemwide_patch_exec_del,
+            .args = (jbserver_arg[]) {
+                    { .name = "caller-token", .type = JBS_TYPE_CALLER_TOKEN, .out = false },
+                    { .name = "exec-path", .type = JBS_TYPE_STRING, .out = false },
+                    { 0 },
+            },
+        },
 		{ 0 },
 	},
 };

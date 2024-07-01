@@ -223,8 +223,32 @@ kBinaryConfig configForBinary(const char* path, char *const argv[restrict])
 	return 0;
 }
 
-// 1. Make sure the about to be spawned binary and all of it's dependencies are trust cached
+#define APP_PATH_PREFIX "/private/var/containers/Bundle/Application/"
+
+bool is_app_path(const char* path)
+{
+    if(!path) return false;
+
+    char rp[PATH_MAX];
+    if(!realpath(path, rp)) return false;
+
+    if(strncmp(rp, APP_PATH_PREFIX, sizeof(APP_PATH_PREFIX)-1) != 0)
+        return false;
+
+    char* p1 = rp + sizeof(APP_PATH_PREFIX)-1;
+    char* p2 = strchr(p1, '/');
+    if(!p2) return false;
+
+    //is normal app or jailbroken app/daemon?
+    if((p2 - p1) != (sizeof("xxxxxxxx-xxxx-xxxx-yxxx-xxxxxxxxxxxx")-1))
+        return false;
+
+	return true;
+}
+
+// 1. Ensure the binary about to be spawned and all of it's dependencies are trust cached
 // 2. Insert "DYLD_INSERT_LIBRARIES=/usr/lib/systemhook.dylib" into all binaries spawned
+// 3. Increase Jetsam limit to more sane value (Multipler defined as JETSAM_MULTIPLIER)
 
 int spawn_hook_common(pid_t *restrict pid, const char *restrict path,
 					   const posix_spawn_file_actions_t *restrict file_actions,
@@ -232,7 +256,7 @@ int spawn_hook_common(pid_t *restrict pid, const char *restrict path,
 					   char *const argv[restrict],
 					   char *const envp[restrict],
 					   void *orig,
-					   int (*trust_binary)(const char *),
+					   int (*trust_binary)(const char *path, xpc_object_t preferredArchsArray),
 					   int (*set_process_debugged)(uint64_t pid, bool fullyDebugged))
 {
 	int (*pspawn_orig)(pid_t *restrict, const char *restrict, const posix_spawn_file_actions_t *restrict, const posix_spawnattr_t *restrict, char *const[restrict], char *const[restrict]) = orig;
@@ -243,8 +267,38 @@ int spawn_hook_common(pid_t *restrict pid, const char *restrict path,
 	kBinaryConfig binaryConfig = configForBinary(path, argv);
 
 	if (!(binaryConfig & kBinaryConfigDontProcess)) {
-		// jailbreakd: Upload binary to trustcache if needed
-		trust_binary(path);
+
+		bool preferredArchsSet = false;
+		cpu_type_t preferredTypes[4];
+		cpu_subtype_t preferredSubtypes[4];
+		size_t sizeOut = 0;
+		if (posix_spawnattr_getarchpref_np(attrp, 4, preferredTypes, preferredSubtypes, &sizeOut) == 0) {
+			for (size_t i = 0; i < sizeOut; i++) {
+				if (preferredTypes[i] != 0 || preferredSubtypes[i] != UINT32_MAX) {
+					preferredArchsSet = true;
+					break;
+				}
+			}
+		}
+
+		xpc_object_t preferredArchsArray = NULL;
+		if (preferredArchsSet) {
+			preferredArchsArray = xpc_array_create_empty();
+			for (size_t i = 0; i < sizeOut; i++) {
+				xpc_object_t curArch = xpc_dictionary_create_empty();
+				xpc_dictionary_set_uint64(curArch, "type", preferredTypes[i]);
+				xpc_dictionary_set_uint64(curArch, "subtype", preferredSubtypes[i]);
+				xpc_array_set_value(preferredArchsArray, XPC_ARRAY_APPEND, curArch);
+				xpc_release(curArch);
+			}
+		}
+
+		// Upload binary to trustcache if needed
+		trust_binary(path, preferredArchsArray);
+
+		if (preferredArchsArray) {
+			xpc_release(preferredArchsArray);
+		}
 	}
 
 	const char *existingLibraryInserts = envbuf_getenv((const char **)envp, "DYLD_INSERT_LIBRARIES");
@@ -255,12 +309,15 @@ int spawn_hook_common(pid_t *restrict pid, const char *restrict path,
 				systemHookAlreadyInserted = true;
 			}
 			else {
-				trust_binary(existingLibraryInsert);
+				trust_binary(existingLibraryInsert, NULL);
 			}
 		});
 	}
 
 	int JBEnvAlreadyInsertedCount = (int)systemHookAlreadyInserted;
+
+	struct statfs fs;
+	bool isPlatformProcess = statfs(path, &fs)==0 && strcmp(fs.f_mntonname, "/private/var") != 0;
 
 	// Check if we can find at least one reason to not insert jailbreak related environment variables
 	// In this case we also need to remove pre existing environment variables if they are already set
@@ -272,20 +329,22 @@ int spawn_hook_common(pid_t *restrict pid, const char *restrict path,
 			break;
 		}
 
+		bool isAppPath = is_app_path(path);
+
 		// Check if we can find a _SafeMode or _MSSafeMode variable
 		// In this case we do not want to inject anything
 		const char *safeModeValue = envbuf_getenv((const char **)envp, "_SafeMode");
 		const char *msSafeModeValue = envbuf_getenv((const char **)envp, "_MSSafeMode");
 		if (safeModeValue) {
 			if (!strcmp(safeModeValue, "1")) {
-				shouldInsertJBEnv = false;
+				if(isPlatformProcess||isAppPath) shouldInsertJBEnv = false;
 				hasSafeModeVariable = true;
 				break;
 			}
 		}
 		if (msSafeModeValue) {
 			if (!strcmp(msSafeModeValue, "1")) {
-				shouldInsertJBEnv = false;
+				if(isPlatformProcess||isAppPath) shouldInsertJBEnv = false;
 				hasSafeModeVariable = true;
 				break;
 			}

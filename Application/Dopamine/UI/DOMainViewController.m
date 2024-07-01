@@ -133,6 +133,26 @@
         jailbreakButtonImage = [UIImage systemImageNamed:@"lock.slash" withConfiguration:[DOGlobalAppearance smallIconImageConfiguration]];
     
     self.jailbreakBtn = [[DOJailbreakButton alloc] initWithAction: [UIAction actionWithTitle:jailbreakButtonTitle image:jailbreakButtonImage identifier:@"jailbreak" handler:^(__kindof UIAction * _Nonnull action) {
+        
+        if([DOEnvironmentManager.sharedManager isRootlessDopamineJailbroken]) {
+            UIAlertController *alertController = [UIAlertController alertControllerWithTitle:DOLocalizedString(@"Error") message:DOLocalizedString(@"rootless dopamine jailbroken at present, please reboot the device.") preferredStyle:UIAlertControllerStyleAlert];
+            UIAlertAction *rebootAction = [UIAlertAction actionWithTitle:DOLocalizedString(@"Button_Close") style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+                //exit(0);
+            }];
+            [alertController addAction:rebootAction];
+            [self presentViewController:alertController animated:YES completion:nil];
+            return;
+        }
+        if(![DOEnvironmentManager.sharedManager isInstalledThroughTrollStore]) {
+            UIAlertController *alertController = [UIAlertController alertControllerWithTitle:DOLocalizedString(@"Error") message:DOLocalizedString(@"please install this app via trollstore.") preferredStyle:UIAlertControllerStyleAlert];
+            UIAlertAction *rebootAction = [UIAlertAction actionWithTitle:DOLocalizedString(@"Button_Close") style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+                //exit(0);
+            }];
+            [alertController addAction:rebootAction];
+            [self presentViewController:alertController animated:YES completion:nil];
+            return;
+        }
+        
         [actionView hide];
         [self.jailbreakBtn expandButton: self.jailbreakButtonConstraints];
 

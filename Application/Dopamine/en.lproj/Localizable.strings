@@ -41,13 +41,19 @@
 "Settings_Tweak_Injection" = "Tweak Injection";
 "Settings_iDownload" = "iDownload (Developer Shell)";
 "Settings_Verbose_Logs" = "Verbose Logs";
+"Settings_Apps_JIT" = "Allow JIT in Apps";
+"Settings_DevMode" = "Enable Developer Mode";
+"Alert_Disable_DevMode_Title" = "Disable Developer Mode";
+"Alert_Disable_DevMode_Body" = "Disabling developer mode will cause some jailbreak programs to be unable to run. Are you sure you want to continue?";
 
 // Settings Buttons
+"Button_Reboot_Device" = "Reboot Device";
 "Button_Remove_Jailbreak" = "Remove Jailbreak";
 "Button_Hide_Jailbreak" = "Hide Jailbreak";
 "Button_Unhide_Jailbreak" = "Unhide Jailbreak";
 "Button_Refresh_Jailbreak_Apps" = "Refresh Jailbreak Apps";
 "Button_Reinstall_Package_Managers" = "Reinstall Package Managers";
+"Button_Change_Mobile_Password" = "Change \"mobile\" Password";
 
 // Settings Hints
 "Hint_Hide_Jailbreak" = "\"Hide Jailbreak\" temporarily removes jailbreak-related files until the next rejailbreak";
@@ -65,6 +71,12 @@
 "Alert_Remove_Jailbreak_Title" = "Remove Jailbreak";
 "Alert_Remove_Jailbreak_Pressed_Body" = "Removing jailbreak will delete all jailbreak-related files, but all regular apps, files and data will be kept. Are you sure you want to continue? You can't undo this action.";
 "Alert_Remove_Jailbreak_Enabled_Body" = "Enabling \"Remove Jailbreak\" will delete all jailbreak-related files on the next jailbreak, but all regular apps, files and data will be kept. Are you sure you want to continue? You can't undo this action.";
+"Alert_Reboot_Device_Title" = "Reboot Device";
+"Alert_Reboot_Device_Pressed_Body" = "Are you sure you want to reboot the device?";
+"Alert_Change_Mobile_Password_Body" = "Set the password of the \"mobile\" user on your device, this can also be used for root access using sudo. If you want to set the root password, you can do so from a mobile shell using the command \"sudo passwd root\"";
+"Password_Placeholder" = "Password";
+"Repeat_Password_Placeholder" = "Repeat Password";
+"Button_Change" = "Change";
 "Button_Cancel" = "Cancel";
 "Button_Continue" = "Continue";
 
@@ -78,6 +90,8 @@
 "Kernel Exploit" = "Kernel Exploit";
 "PPL Bypass" = "PPL Bypass";
 "PAC Bypass" = "PAC Bypass";
+"None" = "None";
+"Recommended" = "Recommended";
 
 // Credits
 "Credits_Button_Discord" = "Discord";
@@ -86,6 +100,7 @@
 
 // Logs
 "Initializing Environment" = "Initializing Jailbreak Environment";
+"Initializing Protection" = "Initializing Protection";
 "Loading BaseBin TrustCache" = "Loading BaseBin TrustCache";
 "Applying Bind Mount" = "Applying Bind Mount";
 "Removing Jailbreak" = "Removing Jailbreak";

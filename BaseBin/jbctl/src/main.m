@@ -13,7 +13,9 @@ void print_usage(void)
 	printf("Usage: jbctl <command> <arguments>\n\
 Available commands:\n\
 	proc_set_debugged <pid>\t\tMarks the process with the given pid as being debugged, allowing invalid code pages inside of it\n\
-	rebuild_trustcache\t\tRebuilds the TrustCache, clearing any previously trustcached files that no longer exists from it (automatically ran daily at midnight)\n\
+	trustcache info\t\t\tPrint info about all jailbreak related trustcaches and the cdhashes contained in them\n\
+	trustcache clear\t\tClears all existing cdhashes from the jailbreaks trustcache\n\
+	trustcache add /path/to/macho\t\tAdd the cdhash of a macho to the jailbreaks trustcache\n\
 	update <tipa/basebin> <path>\tInitiates a jailbreak update either based on a TIPA or based on a basebin.tar file, TIPA installation depends on TrollStore, afterwards it triggers a userspace reboot\n");
 }
 
@@ -51,11 +53,66 @@ int main(int argc, char* argv[])
 			printf("Failed to mark proc of pid %d as debugged\n", pid);
 		}
 	}
-	else if (!strcmp(cmd, "rebuild_trustcache")) {
-		//jbdRebuildTrustCache();
-	} else if (!strcmp(cmd, "reboot_userspace")) {
+	else if (!strcmp(cmd, "trustcache")) {
+		if (argc < 3) {
+			print_usage();
+			return 2;
+		}
+		if (getuid() != 0) {
+			printf("ERROR: trustcache subcommand requires root.\n");
+			return 3;
+		}
+		const char *trustcacheCmd = argv[2];
+		if (!strcmp(trustcacheCmd, "info")) {
+			xpc_object_t tcArr = nil;
+			if (jbclient_root_trustcache_info(&tcArr) == 0) {
+				size_t tcCount = xpc_array_get_count(tcArr);
+				for (size_t i = 0; i < tcCount; i++) {
+					xpc_object_t tc = xpc_array_get_dictionary(tcArr, i);
+					size_t uuidLength = 0;
+					const void *uuidData = xpc_dictionary_get_data(tc, "uuid", &uuidLength);
+					xpc_object_t cdhashesArr = xpc_dictionary_get_array(tc, "cdhashes");
+					if (uuidData && cdhashesArr) {
+						size_t length = xpc_array_get_count(cdhashesArr);
+						char uuidString[uuidLength * 2 + 1];
+						convert_data_to_hex_string(uuidData, uuidLength, uuidString);
+						printf("Jailbreak Trustcache %zd <UUID: %s> (length: %zd)\n", i, uuidString, length);
+						for (size_t j = 0; j < length; j++) {
+							size_t cdhashLength = 0;
+							const void *cdhashData = xpc_array_get_data(cdhashesArr, j, &cdhashLength);
+							if (cdhashData) {
+								char cdhashString[cdhashLength * 2 + 1];
+								convert_data_to_hex_string(cdhashData, cdhashLength, cdhashString);
+								printf("| %zd:\t%s\n", j+1, cdhashString);
+							}
+						}
+					}
+				}
+			}
+			return 0;
+		}
+		else if (!strcmp(trustcacheCmd, "clear")) {
+			return jbclient_root_trustcache_clear();
+		}
+		else if (!strcmp(trustcacheCmd, "add")) {
+			if (argc < 4) {
+				print_usage();
+				return 2;
+			}
+			const char *filepath = argv[3];
+			if (access(filepath, F_OK) != 0) {
+				printf("ERROR: passed macho path does not exist\n");
+				printf("\n\n");
+				print_usage();
+				return 2;
+			}
+			return jbclient_trust_binary(filepath, NULL);
+		}
+	}
+	else if (!strcmp(cmd, "reboot_userspace")) {
 		return reboot3(RB2_USERREBOOT);
-	} else if (!strcmp(cmd, "update")) {
+	}
+	else if (!strcmp(cmd, "update")) {
 		if (argc < 4) {
 			print_usage();
 			return 2;
@@ -82,7 +139,7 @@ int main(int argc, char* argv[])
 				return 5;
 			}
 
-			LSApplicationProxy *dopamineAppProxy = [LSApplicationProxy applicationProxyForIdentifier:@"com.opa334.Dopamine"];
+			LSApplicationProxy *dopamineAppProxy = [LSApplicationProxy applicationProxyForIdentifier:@"com.opa334.Dopamine-roothide"];
 			if (!dopamineAppProxy) {
 				printf("Unable to locate newly installed Dopamine build.\n");
 				return 6;
@@ -106,7 +163,8 @@ int main(int argc, char* argv[])
 			printf("Staging update failed with error code %lld\n", result);
 			return result;
 		}
-	} else if (!strcmp(cmd, "internal")) {
+	}
+	else if (!strcmp(cmd, "internal")) {
 		if (getuid() != 0) return -1;
 		if (argc < 3) return -1;
 

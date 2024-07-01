@@ -2,10 +2,55 @@
 #include <libjailbreak/primitives.h>
 #include <libjailbreak/libjailbreak.h>
 #include <libjailbreak/physrw.h>
+#include <libjailbreak/physrw_pte.h>
 #include <libjailbreak/primitives_IOSurface.h>
 #include <libjailbreak/kalloc_pt.h>
 #include <libjailbreak/kcall_Fugu14.h>
+#include <libjailbreak/kcall_arm64.h>
 #include <libjailbreak/jbserver_boomerang.h>
+#include <errno.h>
+#include <libproc.h>
+#include <libproc_private.h>
+#include <libjailbreak/log.h>
+#include <libjailbreak/kernel.h>
+#include <signal.h>
+
+int unrestrict(pid_t pid, int (*callback)(pid_t pid), bool should_resume) {
+    int retries = 0;
+    while (true) {
+        struct proc_bsdinfo procInfo = {0};
+        int ret = proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &procInfo, sizeof(procInfo));
+        if (ret != sizeof(procInfo)) {
+            JBLogDebug("bsdinfo failed, %d,%s\n", errno, strerror(errno));
+            return -1;
+        }
+
+        JBLogDebug("%d pstat=%x flag=%x xstat=%x sec=%lld %lld nice=%d\n", ret, procInfo.pbi_status, procInfo.pbi_flags,
+                   procInfo.pbi_xstatus, procInfo.pbi_start_tvsec, procInfo.pbi_start_tvusec, procInfo.pbi_nice);
+
+        if (procInfo.pbi_status == SSTOP) {
+            JBLogDebug("%d pstat=%x flag=%x xstat=%x\n", ret, procInfo.pbi_status, procInfo.pbi_flags,
+                       procInfo.pbi_xstatus);
+            break;
+        }
+
+        if (procInfo.pbi_status != SRUN) {
+            JBLogDebug("unexcept %d pstat=%x\n", ret, procInfo.pbi_status);
+            return -1;
+        }
+        retries++;
+        usleep(10 * 1000);
+    }
+
+    JBLogDebug("unrestrict retries=%d\n", retries);
+
+    int ret = callback(pid);
+
+    if (should_resume)
+        kill(pid, SIGCONT);
+
+    return ret;
+}
 
 int main(int argc, char* argv[])
 {
@@ -48,28 +93,14 @@ int main(int argc, char* argv[])
 	if (kr != KERN_SUCCESS) return -1;
 	mach_port_deallocate(mach_task_self(), launchdTaskPort);
 
-	// Retrieve system info
-	xpc_object_t xSystemInfoDict = NULL;
-	if (jbclient_root_get_sysinfo(&xSystemInfoDict) != 0) return -1;
-	SYSTEM_INFO_DESERIALIZE(xSystemInfoDict);
-
-	// Retrieve physrw
-	jbclient_root_get_physrw(false);
-	libjailbreak_physrw_init(true);
-	libjailbreak_translation_init();
-
-	libjailbreak_IOSurface_primitives_init();
-	if (__builtin_available(iOS 16.0, *)) {
-		libjailbreak_kalloc_pt_init();
-	}
-
-	// Retrieve kcall if available
-	if (jbinfo(usesPACBypass)) {
-		jbclient_get_fugu14_kcall();
-	}
+	// Retrieve primitives
+	jbclient_initialize_primitives_internal(false);
 
 	// Send done message to launchd
 	jbclient_boomerang_done();
+
+    // give launchd GET_TASK_ALLOW
+    unrestrict(1, proc_csflags_patch, true);
 
 	// Now make our server run so that launchd can get everything back
 	dispatch_main();

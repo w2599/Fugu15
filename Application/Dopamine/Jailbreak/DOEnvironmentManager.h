@@ -25,6 +25,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSString *)nightlyHash;
 
 - (BOOL)isInstalledThroughTrollStore;
+- (BOOL)isRootlessDopamineJailbroken;
 - (BOOL)isJailbroken;
 - (BOOL)isBootstrapped;
 - (NSString *)jailbrokenVersion;
@@ -43,7 +44,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)respring;
 - (void)rebootUserspace;
 - (void)refreshJailbreakApps;
+- (void)doReboot;
 - (void)reboot;
+- (void)changeMobilePassword:(NSString *)newPassword;
 - (NSError*)updateEnvironment;
 - (void)updateJailbreakFromTIPA:(NSString *)tipaPath;
 
@@ -52,8 +55,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)isIDownloadEnabled;
 - (void)setIDownloadEnabled:(BOOL)enabled needsUnsandbox:(BOOL)needsUnsandbox;
 - (void)setIDownloadLoaded:(BOOL)loaded needsUnsandbox:(BOOL)needsUnsandbox;
-- (BOOL)isJailbreakHidden;
-- (void)setJailbreakHidden:(BOOL)hidden;
 
 - (BOOL)isPACBypassRequired;
 - (BOOL)isPPLBypassRequired;

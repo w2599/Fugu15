@@ -7,6 +7,7 @@
 
 #import "DOUIManager.h"
 #import "DOEnvironmentManager.h"
+#import "NSString+Version.h"
 #import <pthread.h>
 
 @implementation DOUIManager
@@ -33,40 +34,28 @@
 
 - (BOOL)isUpdateAvailable
 {
-    NSArray *releases = [self getLatestReleases];
-    if (releases.count == 0)
-        return NO;
-    
-    NSString *latestVersion = releases[0][@"tag_name"];
+    NSString *latestVersion = [self getLatestReleaseTag];
     NSString *currentVersion = [self getLaunchedReleaseTag];
-    return [self numericalRepresentationForVersion:latestVersion] > [self numericalRepresentationForVersion:currentVersion];
+    return [latestVersion numericalVersionRepresentation] > [currentVersion numericalVersionRepresentation];
 }
 
-- (long long)numericalRepresentationForVersion:(NSString*)version {
-    long long numericalRepresentation = 0;
-
-    NSArray *components = [version componentsSeparatedByCharactersInSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]];
-    while (components.count < 3)
-        components = [components arrayByAddingObject:@"0"];
-
-    numericalRepresentation |= [components[0] integerValue] << 16;
-    numericalRepresentation |= [components[1] integerValue] << 8;
-    numericalRepresentation |= [components[2] integerValue];
-    return numericalRepresentation;
-}
-
-- (NSArray *)getUpdatesInRange: (NSString *)start end: (NSString *)end
+- (NSArray *)getUpdatesInRange:(NSString *)start end:(NSString *)end
 {
     NSArray *releases = [self getLatestReleases];
     if (releases.count == 0)
         return @[];
 
-    long long startVersion = [self numericalRepresentationForVersion:start];
-    long long endVersion = [self numericalRepresentationForVersion:end];
+    long long startVersion = [start numericalVersionRepresentation];
+    long long endVersion = [end numericalVersionRepresentation];
     NSMutableArray *updates = [NSMutableArray new];
     for (NSDictionary *release in releases) {
         NSString *version = release[@"tag_name"];
-        long long numericalVersion = [self numericalRepresentationForVersion:version];
+        NSNumber *prerelease = release[@"prerelease"];
+        if ([prerelease boolValue]) {
+            // Skip prereleases
+            continue;
+        }
+        long long numericalVersion = [version numericalVersionRepresentation];
         if (numericalVersion > startVersion && numericalVersion <= endVersion) {
             [updates addObject:release];
         }
@@ -76,21 +65,54 @@
 
 - (NSArray *)getLatestReleases
 {
+    static NSLock* reqLock=nil;
+    static NSArray *releases=nil;
     static dispatch_once_t onceToken;
-    static NSArray *releases;
     dispatch_once(&onceToken, ^{
-        NSURL *url = [NSURL URLWithString:@"https://api.github.com/repos/opa334/Dopamine/releases"];
-        NSData *data = [NSData dataWithContentsOfURL:url];
-        if (data) {
-            NSError *error;
-            releases = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:&error];
-            if (error)
-            {
-                onceToken = 0;
-                releases = @[];
-            }
-        }
+        reqLock = [NSLock new];
     });
+    
+    [reqLock lock];
+    
+    if(!releases) {
+        
+        NSURL *url = [NSURL URLWithString:@"https://api.github.com/repos/roothide/Dopamine2-roothide/tags"];
+        NSData *data = [NSData dataWithContentsOfURL:url];
+        if (!data) {
+            return nil;
+        }
+        
+        NSError *error=nil;
+        NSArray* tags = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:&error];
+        if (error) {
+            return nil;
+        }
+        
+        if(!tags || tags.count==0) {
+            return nil;
+        }
+        
+        NSData* data2 = [NSData dataWithContentsOfURL:[NSURL URLWithString:tags[0][@"commit"][@"url"]]];
+        if(!data2) {
+            return nil;
+        }
+        
+        NSError *error2=nil;
+        NSDictionary* commit = [NSJSONSerialization JSONObjectWithData:data2 options:kNilOptions error:&error2];
+        if(error2) {
+            return nil;
+        }
+        
+        NSMutableDictionary* newcommit = [tags[0] mutableCopy];
+        newcommit[@"tag_name"] = tags[0][@"name"];
+        newcommit[@"body"] = commit[@"commit"][@"message"];
+        newcommit[@"assets"] = @[@{@"browser_download_url":@"https://github.com/roothide/Dopamine2-roothide"}];
+        releases = @[newcommit.copy];
+        
+    }
+    
+    [reqLock unlock];
+    
     return releases;
 }
 
@@ -98,9 +120,11 @@
 {
     if (![[DOEnvironmentManager sharedManager] jailbrokenVersion])
         return NO;
-    long long jailbrokenVersion = [self numericalRepresentationForVersion:[[DOEnvironmentManager sharedManager] jailbrokenVersion]];
-    long long launchedVersion = [self numericalRepresentationForVersion:[self getLaunchedReleaseTag]];
-    return launchedVersion > jailbrokenVersion;
+
+    NSString *jailbrokenVersion = [[DOEnvironmentManager sharedManager] jailbrokenVersion];
+    NSString *launchedVersion = [self getLaunchedReleaseTag];
+    
+    return [launchedVersion numericalVersionRepresentation] > [jailbrokenVersion numericalVersionRepresentation];
 }
 
 - (bool)launchedReleaseNeedsManualUpdate
@@ -121,14 +145,19 @@
 - (NSString*)getLatestReleaseTag
 {
     NSArray *releases = [self getLatestReleases];
-    if (releases.count == 0)
-        return nil;
-    return releases[0][@"tag_name"];
+    for (NSDictionary *release in releases) {
+        NSNumber *prerelease = release[@"prerelease"];
+        if ([prerelease boolValue]) {
+            continue;
+        }
+        return release[@"tag_name"];
+    }
+    return nil;
 }
 
 - (NSString*)getLaunchedReleaseTag
 {
-    return [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+    return [DOEnvironmentManager.sharedManager nightlyHash];
 }
 
 - (NSArray*)availablePackageManagers
@@ -208,6 +237,8 @@
 
 - (void)sendLog:(NSString*)log debug:(BOOL)debug update:(BOOL)update
 {
+    // NSLog(@"sendLog: %@", log);
+    
     if (!self.logView || !log)
         return;
 
@@ -258,7 +289,7 @@
     [self.logView didComplete];
 }
 
-- (void)startLogCapture
+- (void)observeFileDescriptor:(int)fd withCallback:(void (^)(char *line))callbackBlock
 {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         int stdout_pipe[2];
@@ -267,39 +298,47 @@
             return;
         }
 
-        dup2(STDOUT_FILENO, stdout_orig[1]);
+        dup2(fd, stdout_orig[1]);
         close(stdout_orig[0]);
         
-        dup2(stdout_pipe[1], STDOUT_FILENO);
+        dup2(stdout_pipe[1], fd);
         close(stdout_pipe[1]);
         
-        char buffer[1024];
+        char cur = 0;
         char line[1024];
         int line_index = 0;
         ssize_t bytes_read;
 
-        while ((bytes_read = read(stdout_pipe[0], buffer, sizeof(buffer) - 1)) > 0) {
+        while ((bytes_read = read(stdout_pipe[0], &cur, sizeof(cur))) > 0) {
             @autoreleasepool {
-                // Tee: Write back to the original standard output
-                write(stdout_orig[1], buffer, bytes_read);
+                write(stdout_orig[1], &cur, bytes_read);
 
-                buffer[bytes_read] = '\0'; // Null terminate to handle as string
-                for (int i = 0; i < bytes_read; ++i) {
-                    if (buffer[i] == '\n') {
-                        line[line_index] = '\0';
-                        NSString *str = [NSString stringWithUTF8String:line];
-                        [self sendLog:str debug:YES];
-                        line_index = 0;
-                    } else {
-                        if (line_index < sizeof(line) - 1) {
-                            line[line_index++] = buffer[i];
-                        }
+                if (cur == '\n') {
+                    line[line_index] = '\0';
+                    callbackBlock(line);
+                    line_index = 0;
+                } else {
+                    if (line_index < sizeof(line) - 1) {
+                        line[line_index++] = cur;
                     }
                 }
             }
         }
         close(stdout_pipe[0]);
     });
+}
+
+- (void)startLogCapture
+{
+    [self observeFileDescriptor:STDOUT_FILENO withCallback:^(char *line) {
+        NSString *str = [NSString stringWithUTF8String:line];
+        [self sendLog:str debug:YES];
+    }];
+    
+    [self observeFileDescriptor:STDERR_FILENO withCallback:^(char *line) {
+        NSString *str = [NSString stringWithUTF8String:line];
+        [self sendLog:str debug:YES];
+    }];
 }
 
 - (NSString *)localizedStringForKey:(NSString*)key

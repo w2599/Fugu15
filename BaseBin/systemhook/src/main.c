@@ -33,7 +33,8 @@ int necp_session_action(int necp_fd, uint32_t action, uint8_t *in_buffer, size_t
 })
 
 extern char **environ;
-bool gTweaksEnabled = false;
+bool gShouldFixFork = false;
+bool gFullyDebugged = false;
 
 int ptrace(int request, pid_t pid, caddr_t addr, int data);
 #define PT_ATTACH       10      /* trace some running process */
@@ -72,13 +73,63 @@ void applySandboxExtensions(void)
 	}
 }
 
-int posix_spawn_hook(pid_t *restrict pid, const char *restrict path,
+#define POSIX_SPAWN_PROC_TYPE_DRIVER 0x700
+#define POSIX_SPAWN_SYSTEMHOOK_HANDLED	0x2000 // _POSIX_SPAWN_ALLOW_DATA_EXEC(0x2000) only used in DEBUG/DEVELOPMENT kernel
+int posix_spawnattr_getprocesstype_np(const posix_spawnattr_t * __restrict, int * __restrict) __API_AVAILABLE(macos(10.8), ios(6.0));
+
+int posix_spawn_hook(pid_t *restrict pidp, const char *restrict path,
 					   const posix_spawn_file_actions_t *restrict file_actions,
 					   const posix_spawnattr_t *restrict attrp,
 					   char *const argv[restrict],
 					   char *const envp[restrict])
 {
-	return spawn_hook_common(pid, path, file_actions, attrp, argv, envp, (void *)posix_spawn, jbclient_trust_binary, jbclient_platform_set_process_debugged);
+    posix_spawnattr_t attr = NULL;
+    if (!attrp) {
+        attrp = &attr;
+        posix_spawnattr_init(&attr);
+    }
+
+    short flags = 0;
+    posix_spawnattr_getflags(attrp, &flags);
+
+    int proctype = 0;
+    posix_spawnattr_getprocesstype_np(attrp, &proctype);
+
+    bool should_suspend = (proctype != POSIX_SPAWN_PROC_TYPE_DRIVER);
+    bool should_resume = (flags & POSIX_SPAWN_START_SUSPENDED) == 0;
+    bool patch_exec = should_suspend && (flags & POSIX_SPAWN_SETEXEC) != 0;
+
+    if (should_suspend) {
+        posix_spawnattr_setflags(attrp, flags | POSIX_SPAWN_START_SUSPENDED | POSIX_SPAWN_SYSTEMHOOK_HANDLED);
+    }
+
+    if (patch_exec) {
+        if (jbclient_patch_exec_add(path, should_resume) != 0) { // jdb fault? restore
+            posix_spawnattr_setflags(attrp, flags | POSIX_SPAWN_SYSTEMHOOK_HANDLED);
+            patch_exec = false;
+            should_suspend = false;
+        }
+    }
+
+    int pid = 0;
+    int ret = spawn_hook_common(&pid, path, file_actions, attrp, argv, envp, (void *)posix_spawn, jbclient_trust_binary, jbclient_platform_set_process_debugged);
+    if (pidp) *pidp = pid;
+
+    posix_spawnattr_setflags(attrp, flags); // maybe caller will use it again?
+
+    if (patch_exec) { //exec failed?
+        jbclient_patch_exec_del(path);
+    } else if (should_suspend && ret == 0 && pid > 0) {
+        if (jbclient_patch_spawn(pid, should_resume) != 0) { // jdb fault? let it go
+            if (should_resume) {
+                kill(pid, SIGCONT);
+            }
+        }
+    }
+
+    if (attr) posix_spawnattr_destroy(&attr);
+
+    return ret;
 }
 
 int posix_spawnp_hook(pid_t *restrict pid, const char *restrict file,
@@ -88,7 +139,7 @@ int posix_spawnp_hook(pid_t *restrict pid, const char *restrict file,
 					   char *const envp[restrict])
 {
 	return resolvePath(file, NULL, ^int(char *path) {
-		return spawn_hook_common(pid, path, file_actions, attrp, argv, envp, (void *)posix_spawn, jbclient_trust_binary, jbclient_platform_set_process_debugged);
+		return posix_spawn_hook(pid, path, file_actions, attrp, argv, envp);
 	});
 }
 
@@ -98,7 +149,7 @@ int execve_hook(const char *path, char *const argv[], char *const envp[])
 	posix_spawnattr_t attr = NULL;
 	posix_spawnattr_init(&attr);
 	posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETEXEC);
-	int result = spawn_hook_common(NULL, path, NULL, &attr, argv, envp, (void *)posix_spawn, jbclient_trust_binary, jbclient_platform_set_process_debugged);
+	int result = posix_spawn_hook(NULL, path, NULL, &attr, argv, envp);
 	if (attr) {
 		posix_spawnattr_destroy(&attr);
 	}
@@ -305,13 +356,13 @@ int ptrace_hook(int request, pid_t pid, caddr_t addr, int data)
 
 void loadForkFix(void)
 {
-	if (gTweaksEnabled) {
+	if (gShouldFixFork) {
 		static dispatch_once_t onceToken;
 		dispatch_once (&onceToken, ^{
 			// If tweaks have been loaded into this process, we need to load forkfix to ensure forking will work
 			// Optimization: If the process cannot fork at all due to sandbox, we don't need to do anything
 			if (sandbox_check(getpid(), "process-fork", SANDBOX_CHECK_NO_REPORT, NULL) == 0) {
-				dlopen(JBRootPath("/basebin/forkfix.dylib"), RTLD_NOW);
+				assert(dlopen(JBRootPath("/basebin/forkfix.dylib"), RTLD_NOW));
 			}
 		});
 	}
@@ -320,25 +371,41 @@ void loadForkFix(void)
 pid_t fork_hook(void)
 {
 	loadForkFix();
-	return fork();
+	pid_t ret = fork();
+	if(ret==0 && !gShouldFixFork) {
+		jbclient_platform_set_process_debugged(getpid(), false);
+	}
+	return ret;
 }
 
 pid_t vfork_hook(void)
 {
 	loadForkFix();
-	return vfork();
+	pid_t ret = vfork();
+	if(ret==0 && !gShouldFixFork) {
+		jbclient_platform_set_process_debugged(getpid(), false);
+	}
+	return ret;
 }
 
 pid_t forkpty_hook(int *amaster, char *name, struct termios *termp, struct winsize *winp)
 {
 	loadForkFix();
-	return forkpty(amaster, name, termp, winp);
+	int ret = forkpty(amaster, name, termp, winp);
+	if(ret==0 && !gShouldFixFork) {
+		jbclient_platform_set_process_debugged(getpid(), false);
+	}
+	return ret;
 }
 
 int daemon_hook(int __nochdir, int __noclose)
 {
 	loadForkFix();
-	return daemon(__nochdir, __noclose);
+	int ret = daemon(__nochdir, __noclose);
+	if(ret==0 && !gShouldFixFork) {
+		jbclient_platform_set_process_debugged(getpid(), false);
+	}
+	return ret;
 }
 
 #else
@@ -390,6 +457,9 @@ int csops_hook(pid_t pid, unsigned int ops, void *useraddr, size_t usersize)
 			uint32_t* csflag = (uint32_t *)useraddr;
 			*csflag |= CS_VALID;
 			*csflag &= ~CS_DEBUGGED;
+			if (pid == getpid() && gFullyDebugged) {
+				*csflag |= CS_DEBUGGED;
+			}
 		}
 	}
 	return rv;
@@ -404,6 +474,9 @@ int csops_audittoken_hook(pid_t pid, unsigned int ops, void *useraddr, size_t us
 			uint32_t* csflag = (uint32_t *)useraddr;
 			*csflag |= CS_VALID;
 			*csflag &= ~CS_DEBUGGED;
+			if (pid == getpid() && gFullyDebugged) {
+				*csflag |= CS_DEBUGGED;
+			}
 		}
 	}
 	return rv;
@@ -413,13 +486,26 @@ int csops_audittoken_hook(pid_t pid, unsigned int ops, void *useraddr, size_t us
 
 bool shouldEnableTweaks(void)
 {
-	if (access(JBRootPath("/basebin/.safe_mode"), F_OK) == 0) {
+	if (access(JBRootPath("/var/.safe_mode"), F_OK) == 0) {
 		return false;
 	}
 
 	char *tweaksDisabledEnv = getenv("DISABLE_TWEAKS");
 	if (tweaksDisabledEnv) {
 		if (!strcmp(tweaksDisabledEnv, "1")) {
+			return false;
+		}
+	}
+
+	const char *safeModeValue = getenv("_SafeMode");
+	const char *msSafeModeValue = getenv("_MSSafeMode");
+	if (safeModeValue) {
+		if (!strcmp(safeModeValue, "1")) {
+			return false;
+		}
+	}
+	if (msSafeModeValue) {
+		if (!strcmp(msSafeModeValue, "1")) {
 			return false;
 		}
 	}
@@ -450,12 +536,176 @@ bool shouldEnableTweaks(void)
 	return true;
 }
 
+//export for PatchLoader
+__attribute__((visibility("default"))) int PLRequiredJIT() {
+	gShouldFixFork = true;
+	return 0;
+}
+
+
+#include <pwd.h>
+#include <libgen.h>
+#include <stdio.h>
+#include <libproc.h>
+#include <libproc_private.h>
+
+//some process may be killed by sandbox if call systme getppid()
+pid_t __getppid()
+{
+    struct proc_bsdinfo procInfo;
+	if (proc_pidinfo(getpid(), PROC_PIDTBSDINFO, 0, &procInfo, sizeof(procInfo)) <= 0) {
+		return -1;
+	}
+    return procInfo.pbi_ppid;
+}
+
+#define CONTAINER_PATH_PREFIX   "/private/var/mobile/Containers/Data/" // +/Application,PluginKitPlugin,InternalDaemon
+
+void redirectEnvPath(const char* rootdir)
+{
+    // char executablePath[PATH_MAX]={0};
+    // uint32_t bufsize=sizeof(executablePath);
+    // if(_NSGetExecutablePath(executablePath, &bufsize)==0 && strstr(executablePath,"testbin2"))
+    //     printf("redirectNSHomeDir %s, %s\n\n", rootdir, getenv("CFFIXED_USER_HOME"));
+
+    //for now libSystem should be initlized, container should be set.
+
+    char* homedir = NULL;
+
+/* 
+there is a bug in NSHomeDirectory,
+if a containerized root process changes its uid/gid, 
+NSHomeDirectory will return a home directory that it cannot access. (exclude NSTemporaryDirectory)
+We just keep this bug:
+*/
+    if(!issetugid()) // issetugid() should always be false at this time. (but how about persona-mgmt? idk)
+    {
+        homedir = getenv("CFFIXED_USER_HOME");
+        if(homedir)
+        {
+            if(strncmp(homedir, CONTAINER_PATH_PREFIX, sizeof(CONTAINER_PATH_PREFIX)-1) == 0)
+            {
+                return; //containerized
+            }
+            else
+            {
+                homedir = NULL; //from parent, drop it
+            }
+        }
+    }
+
+    if(!homedir) {
+        struct passwd* pwd = getpwuid(geteuid());
+        if(pwd && pwd->pw_dir) {
+            homedir = pwd->pw_dir;
+        }
+    }
+
+    // if(!homedir) {
+    //     //CFCopyHomeDirectoryURL does, but not for NSHomeDirectory
+    //     homedir = getenv("HOME");
+    // }
+
+    if(!homedir) {
+        homedir = "/var/empty";
+    }
+
+    char newhome[PATH_MAX]={0};
+    snprintf(newhome,sizeof(newhome),"%s/%s",rootdir,homedir);
+    setenv("CFFIXED_USER_HOME", newhome, 1);
+}
+
+void redirectDirs(const char* rootdir)
+{
+    do {
+        
+        char executablePath[PATH_MAX]={0};
+        uint32_t bufsize=sizeof(executablePath);
+        if(_NSGetExecutablePath(executablePath, &bufsize) != 0)
+            break;
+        
+        char realexepath[PATH_MAX];
+        if(!realpath(executablePath, realexepath))
+            break;
+            
+        char realjbroot[PATH_MAX];
+        if(!realpath(rootdir, realjbroot))
+            break;
+        
+        if(realjbroot[strlen(realjbroot)] != '/')
+            strcat(realjbroot, "/");
+        
+        if(strncmp(realexepath, realjbroot, strlen(realjbroot)) != 0)
+            break;
+
+        //for jailbroken binaries
+        redirectEnvPath(rootdir);
+    
+        pid_t ppid = __getppid();
+        assert(ppid > 0);
+        if(ppid != 1)
+            break;
+        
+        char pwd[PATH_MAX];
+        if(getcwd(pwd, sizeof(pwd)) == NULL)
+            break;
+        if(strcmp(pwd, "/") != 0)
+            break;
+    
+        assert(chdir(rootdir)==0);
+        
+    } while(0);
+}
+
+
+extern void* _dyld_get_shared_cache_range(size_t* length);
+
+int syscall_issetugid();
+int new_issetugidhook()
+{
+	void* caller = __builtin_return_address(0);
+
+	size_t length=0;
+	void* start = _dyld_get_shared_cache_range(&length);
+
+	if((uint64_t)caller >= (uint64_t)start  &&  (uint64_t)caller < ((uint64_t)start+length))
+	{
+		return 0;
+	}
+
+	return syscall_issetugid();
+}
+
+void loadPathFix(void)
+{
+	static dispatch_once_t onceToken;
+	dispatch_once (&onceToken, ^{
+		gShouldFixFork = true;
+		litehook_hook_function((void *)&issetugid, (void *)&new_issetugidhook);
+	});
+}
+
+char HOOK_DYLIB_PATH[PATH_MAX] = {0};
+
 __attribute__((constructor)) static void initializer(void)
 {
-	jbclient_process_checkin(&JB_RootPath, &JB_BootUUID, &JB_SandboxExtensions);
+	struct dl_info di={0};
+    dladdr((void*)initializer, &di);
+	strncpy(HOOK_DYLIB_PATH, di.dli_fname, sizeof(HOOK_DYLIB_PATH));
+
+	jbclient_process_checkin(&JB_RootPath, &JB_BootUUID, &JB_SandboxExtensions, &gFullyDebugged);
+
+	if(issetugid()==1) {
+		//for persona?
+		loadPathFix();
+	}
+
+	redirectDirs(JB_RootPath);
 
 	// Apply sandbox extensions
 	applySandboxExtensions();
+
+	dlopen_hook(JBRootPath("/usr/lib/roothideinit.dylib"), RTLD_NOW);
 
 	// Unset DYLD_INSERT_LIBRARIES, but only if systemhook itself is the only thing contained in it
 	const char *dyldInsertLibraries = getenv("DYLD_INSERT_LIBRARIES");
@@ -466,17 +716,19 @@ __attribute__((constructor)) static void initializer(void)
 	}
 
 	if (loadExecutablePath() == 0) {
-		if (strcmp(gExecutablePath, "/usr/sbin/cfprefsd") == 0) {
+		if (strcmp(gExecutablePath, "/usr/sbin/cfprefsd") == 0
+		|| strcmp(gExecutablePath, "/usr/libexec/lsd") == 0
+		|| strcmp(gExecutablePath, "/System/Library/CoreServices/SpringBoard.app/SpringBoard") == 0) {
 			dlopen_hook(JBRootPath("/basebin/rootlesshooks.dylib"), RTLD_NOW);
 		}
-		else if (strcmp(gExecutablePath, "/usr/libexec/watchdogd") == 0) {
+		else if (!strcmp(gExecutablePath, "/usr/libexec/watchdogd")) {
 			dlopen_hook(JBRootPath("/basebin/watchdoghook.dylib"), RTLD_NOW);
 		}
 
 #ifndef __arm64e__
 		// On arm64, writing to executable pages removes CS_VALID from the csflags of the process
 		// These hooks are neccessary to get the system to behave with this
-		// They're ugly but they're needed
+		// They are ugly but needed
 		litehook_hook_function(csops, csops_hook);
 		litehook_hook_function(csops_audittoken, csops_audittoken_hook);
 		if (__builtin_available(iOS 16.0, *)) {
@@ -488,10 +740,12 @@ __attribute__((constructor)) static void initializer(void)
 		}
 #endif
 
+		dlopen_hook(JBRootPath("/usr/lib/roothidepatch.dylib"), RTLD_NOW); //require jit
+
 		if (shouldEnableTweaks()) {
-			const char *tweakLoaderPath = "/var/jb/usr/lib/TweakLoader.dylib";
+			const char *tweakLoaderPath = JBRootPath("/usr/lib/TweakLoader.dylib");
 			if(access(tweakLoaderPath, F_OK) == 0) {
-				gTweaksEnabled = true;
+				gShouldFixFork = true;
 				void *tweakLoaderHandle = dlopen_hook(tweakLoaderPath, RTLD_NOW);
 				if (tweakLoaderHandle != NULL) {
 					dlclose(tweakLoaderHandle);
@@ -502,9 +756,6 @@ __attribute__((constructor)) static void initializer(void)
 
 #ifndef __arm64e__
 		// Feeable attempt at adding back CS_VALID
-		// If any hooks are applied after this, it is lost again
-		// Temporary workaround until a better solution for this problem is found
-		// This + the csops hook should resolve all cases unless a tweak does something really stupid
 		jbclient_cs_revalidate();
 #endif
 	}
@@ -533,3 +784,57 @@ DYLD_INTERPOSE(vfork_hook, vfork)
 DYLD_INTERPOSE(forkpty_hook, forkpty)
 DYLD_INTERPOSE(daemon_hook, daemon)
 #endif
+
+uid_t setuid_hook(uid_t uid) {
+	loadPathFix();
+	return setuid(uid);
+}
+uid_t seteuid_hook(uid_t uid) {
+	loadPathFix();
+	return seteuid(uid);
+}
+uid_t setruid_hook(uid_t uid) {
+	loadPathFix();
+	return setruid(uid);
+}
+uid_t setreuid_hook(uid_t ruid, uid_t euid) {
+	loadPathFix();
+	return setreuid(ruid,euid);
+}
+
+gid_t setgid_hook(gid_t gid) {
+	loadPathFix();
+	return setgid(gid);
+}
+gid_t setegid_hook(gid_t gid) {
+	loadPathFix();
+	return setegid(gid);
+}
+gid_t setrgid_hook(gid_t gid) {
+	loadPathFix();
+	return setrgid(gid);
+}
+gid_t setregid_hook(gid_t rgid, gid_t egid) {
+	loadPathFix();
+	return setregid(rgid,egid);
+}
+
+int	initgroups_hook(const char * user, int group) {
+	loadPathFix();
+	return initgroups(user,group);
+}
+int setgroups_hook(int n, const gid_t* ids) {
+	loadPathFix();
+	return setgroups(n,ids);
+}
+
+DYLD_INTERPOSE(setuid_hook, setuid)
+DYLD_INTERPOSE(seteuid_hook, seteuid)
+DYLD_INTERPOSE(setruid_hook, setruid)
+DYLD_INTERPOSE(setreuid_hook, setreuid)
+DYLD_INTERPOSE(setgid_hook, setgid)
+DYLD_INTERPOSE(setegid_hook, setegid)
+DYLD_INTERPOSE(setrgid_hook, setrgid)
+DYLD_INTERPOSE(setregid_hook, setregid)
+DYLD_INTERPOSE(initgroups_hook, initgroups)
+DYLD_INTERPOSE(setgroups_hook, setgroups)

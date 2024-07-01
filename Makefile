@@ -1,8 +1,11 @@
-export NIGHTLY ?= 0
+export NIGHTLY ?= 1
+export ENABLE_LOGS ?= 1
 
 ifeq ($(NIGHTLY), 1)
-export COMMIT_HASH = $(shell git rev-parse HEAD)
+export COMMIT_HASH = $(shell git describe --tags --abbrev=0)
 endif
+
+export DOPAMINE_VERSION = $(shell cat ./BaseBin/_external/basebin/.version)
 
 all:
 	@$(MAKE) -C BaseBin
@@ -15,13 +18,13 @@ clean:
 	@$(MAKE) -C Application clean
 
 update: all
-	ssh $(DEVICE) "rm -rf /var/mobile/Documents/Dopamine.tipa"
-	scp -C ./Application/Dopamine.tipa "$(DEVICE):/var/mobile/Documents/Dopamine.tipa"
-	ssh $(DEVICE) "/var/jb/basebin/jbctl update tipa /var/mobile/Documents/Dopamine.tipa"
+	ssh $(DEVICE) "rm -rf /rootfs/var/mobile/Documents/Dopamine.tipa"
+	scp -C ./Application/Dopamine.tipa "$(DEVICE):/rootfs/var/mobile/Documents/Dopamine.tipa"
+	ssh $(DEVICE) "/basebin/jbctl update tipa /var/mobile/Documents/Dopamine.tipa"
 
 update-basebin: all
-	ssh $(DEVICE) "rm -rf /var/mobile/Documents/basebin.tar"
-	scp -C ./BaseBin/basebin.tar "$(DEVICE):/var/mobile/Documents/basebin.tar"
-	ssh $(DEVICE) "/var/jb/basebin/jbctl update basebin /var/mobile/Documents/basebin.tar"
+	ssh $(DEVICE) "rm -rf /rootfs/var/mobile/Documents/basebin.tar"
+	scp -C ./BaseBin/basebin.tar "$(DEVICE):/rootfs/var/mobile/Documents/basebin.tar"
+	ssh $(DEVICE) "/basebin/jbctl update basebin /var/mobile/Documents/basebin.tar"
 
 .PHONY: update clean

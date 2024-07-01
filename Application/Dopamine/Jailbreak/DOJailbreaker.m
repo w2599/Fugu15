@@ -27,6 +27,7 @@
 #import <libjailbreak/jbserver_boomerang.h>
 #import <libjailbreak/signatures.h>
 #import <libjailbreak/jbclient_xpc.h>
+#import <libjailbreak/kcall_arm64.h>
 #import <CoreServices/LSApplicationProxy.h>
 #import "spawn.h"
 int posix_spawnattr_set_registered_ports_np(posix_spawnattr_t * __restrict attr, mach_port_t portarray[], uint32_t count);
@@ -52,8 +53,9 @@ typedef NS_ENUM(NSInteger, JBErrorCode) {
     JBErrorCodeFailedPlatformize             = -9,
     JBErrorCodeFailedBasebinTrustcache       = -10,
     JBErrorCodeFailedLaunchdInjection        = -11,
-    JBErrorCodeFailedInitFakeLib             = -12,
-    JBErrorCodeFailedDuplicateApps           = -13,
+    JBErrorCodeFailedInitProtection          = -12,
+    JBErrorCodeFailedInitFakeLib             = -13,
+    JBErrorCodeFailedDuplicateApps           = -14,
 };
 
 @implementation DOJailbreaker
@@ -76,17 +78,23 @@ typedef NS_ENUM(NSInteger, JBErrorCode) {
             "struct",
             "physrw",
             "perfkrw",
+            "namecache",
+            NULL,
+            NULL,
             NULL,
             NULL,
             NULL,
         };
 
-        uint32_t idx = 7;
+        uint32_t idx = 8;
         if (xpf_set_is_supported("devmode")) {
             sets[idx++] = "devmode"; 
         }
         if (xpf_set_is_supported("badRecovery")) {
             sets[idx++] = "badRecovery"; 
+        }
+        if (xpf_set_is_supported("arm64kcall")) {
+            sets[idx++] = "arm64kcall"; 
         }
 
         _systemInfoXdict = xpf_construct_offset_dictionary((const char **)sets);
@@ -167,10 +175,13 @@ typedef NS_ENUM(NSInteger, JBErrorCode) {
         if ([pplBypass run] != 0) {[pacBypass cleanup]; [kernelExploit cleanup]; return [NSError errorWithDomain:JBErrorDomain code:JBErrorCodeFailedExploitation userInfo:@{NSLocalizedDescriptionKey:@"Failed to bypass PPL"}];}
         // At this point we presume the PPL bypass gave us unrestricted phys write primitives
     }
-
-    if (@available(iOS 16.0, *)) {
-        // IOSurface kallocs don't work on iOS 16+, use these instead
+    if (!gPrimitives.kalloc_global) {
+        // IOSurface kallocs don't work on iOS 16+, use leaked page tables as allocations instead
         libjailbreak_kalloc_pt_init();
+    }
+    
+    if (![DOEnvironmentManager sharedManager].isArm64e) {
+        arm64_kcall_init();
     }
 
     return nil;
@@ -178,7 +189,13 @@ typedef NS_ENUM(NSInteger, JBErrorCode) {
 
 - (NSError *)buildPhysRWPrimitive
 {
-    int r = libjailbreak_physrw_pte_init(false);
+    int r = -1;
+    if (device_supports_physrw_pte()) {
+        r = libjailbreak_physrw_pte_init(false, 0);
+    }
+    else {
+        r = libjailbreak_physrw_init(false);
+    }
     if (r != 0) {
         return [NSError errorWithDomain:JBErrorDomain code:JBErrorCodeFailedBuildingPhysRW userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"Failed to build phys r/w primitive: %d", r]}];
     }
@@ -269,25 +286,40 @@ typedef NS_ENUM(NSInteger, JBErrorCode) {
 - (NSError *)ensureDevModeEnabled
 {
     if (@available(iOS 16.0, *)) {
-        uint64_t developer_mode_state = kread64(ksymbol(developer_mode_enabled));
-        if ((developer_mode_state & 0xff) == 0 || (developer_mode_state & 0xff) == 1) {
-            // On iOS 16.0 - 16.3, developer_mode_state is a bool
-            if (developer_mode_state == 0) {
-                kwrite8(ksymbol(developer_mode_enabled), 1);
-            }
-        }
-        else if (kread8(developer_mode_state) == 0) {
-            // On iOS 16.4+, developer_mode_state is a pointer to a bool
-            kwrite8(developer_mode_state, 1);
-        }
+        uint64_t developer_mode_storage = kread64(ksymbol(developer_mode_enabled));
+        kwrite8(developer_mode_storage, 1);
     }
     return nil;
 }
 
+int ensure_randomized_cdhash(const char* inputPath, void* cdhashOut);
+
 - (NSError *)loadBasebinTrustcache
 {
+    cdhash_t* basebins_cdhashes=NULL;
+    uint32_t basebins_cdhashesCount=0;
+
+    NSDirectoryEnumerator<NSURL *> *directoryEnumerator = [[NSFileManager defaultManager] enumeratorAtURL:[NSURL fileURLWithPath:jbroot(@"/basebin/")] includingPropertiesForKeys:nil options:0 errorHandler:nil];
+                                            
+    for(NSURL* fileURL in directoryEnumerator)
+    {
+        cdhash_t cdhash={0};
+        if(ensure_randomized_cdhash(fileURL.path.fileSystemRepresentation, cdhash) == 0) {
+            basebins_cdhashes = realloc(basebins_cdhashes, (basebins_cdhashesCount+1) * sizeof(cdhash_t));
+            memcpy(&basebins_cdhashes[basebins_cdhashesCount], cdhash, sizeof(cdhash_t));
+            basebins_cdhashesCount++;
+        }
+    }
+    
+    if(!basebins_cdhashes) {
+        return [NSError errorWithDomain:JBErrorDomain code:JBErrorCodeFailedBasebinTrustcache userInfo:@{NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Failed to build BaseBin trustcache"]}];
+    }
+    
     trustcache_file_v1 *basebinTcFile = NULL;
-    if (trustcache_file_build_from_path([[NSBundle mainBundle].bundlePath stringByAppendingPathComponent:@"basebin.tc"].fileSystemRepresentation, &basebinTcFile) == 0) {
+    int r = trustcache_file_build_from_cdhashes(basebins_cdhashes, basebins_cdhashesCount, &basebinTcFile);
+    free(basebins_cdhashes);
+    
+    if (r == 0) {
         int r = trustcache_file_upload_with_uuid(basebinTcFile, BASEBIN_TRUSTCACHE_UUID);
         free(basebinTcFile);
         if (r != 0) return [NSError errorWithDomain:JBErrorDomain code:JBErrorCodeFailedBasebinTrustcache userInfo:@{NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Failed to upload BaseBin trustcache: %d", r]}];
@@ -351,39 +383,48 @@ typedef NS_ENUM(NSInteger, JBErrorCode) {
     return nil;
 }
 
-- (NSError *)createFakeLib
-{
-    int r = exec_cmd(JBRootPath("/basebin/jbctl"), "internal", "fakelib_init", NULL);
-    if (r != 0) {
-        return [NSError errorWithDomain:JBErrorDomain code:JBErrorCodeFailedInitFakeLib userInfo:@{NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Creating fakelib failed with error: %d", r]}];
-    }
+// - (NSError *)applyProtection
+// {
+//     int r = exec_cmd(JBRootPath("/basebin/jbctl"), "internal", "protection_init", NULL);
+//     if (r != 0) {
+//         return [NSError errorWithDomain:JBErrorDomain code:JBErrorCodeFailedInitProtection userInfo:@{NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Failed initializing protection with error: %d", r]}];
+//     }
+//     return nil;
+// }
 
-    cdhash_t *cdhashes;
-    uint32_t cdhashesCount;
-    macho_collect_untrusted_cdhashes(JBRootPath("/basebin/.fakelib/dyld"), NULL, NULL, &cdhashes, &cdhashesCount);
-    if (cdhashesCount != 1) return [NSError errorWithDomain:JBErrorDomain code:JBErrorCodeFailedInitFakeLib userInfo:@{NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Got unexpected number of cdhashes for dyld???: %d", cdhashesCount]}];
+// - (NSError *)createFakeLib
+// {
+//     int r = exec_cmd(JBRootPath("/basebin/jbctl"), "internal", "fakelib_init", NULL);
+//     if (r != 0) {
+//         return [NSError errorWithDomain:JBErrorDomain code:JBErrorCodeFailedInitFakeLib userInfo:@{NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Creating fakelib failed with error: %d", r]}];
+//     }
+
+//     cdhash_t *cdhashes = NULL;
+//     uint32_t cdhashesCount = 0;
+//     macho_collect_untrusted_cdhashes(JBRootPath("/basebin/.fakelib/dyld"), NULL, NULL, NULL, NULL, 0, &cdhashes, &cdhashesCount);
+//     if (cdhashesCount != 1) return [NSError errorWithDomain:JBErrorDomain code:JBErrorCodeFailedInitFakeLib userInfo:@{NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Got unexpected number of cdhashes for dyld???: %d", cdhashesCount]}];
     
-    trustcache_file_v1 *dyldTCFile = NULL;
-    r = trustcache_file_build_from_cdhashes(cdhashes, cdhashesCount, &dyldTCFile);
-    free(cdhashes);
-    if (r == 0) {
-        int r = trustcache_file_upload_with_uuid(dyldTCFile, DYLD_TRUSTCACHE_UUID);
-        if (r != 0) return [NSError errorWithDomain:JBErrorDomain code:JBErrorCodeFailedInitFakeLib userInfo:@{NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Failed to upload dyld trustcache: %d", r]}];
-        free(dyldTCFile);
-    }
-    else {
-        return [NSError errorWithDomain:JBErrorDomain code:JBErrorCodeFailedInitFakeLib userInfo:@{NSLocalizedDescriptionKey : @"Failed to build dyld trustcache"}];
-    }
+//     trustcache_file_v1 *dyldTCFile = NULL;
+//     r = trustcache_file_build_from_cdhashes(cdhashes, cdhashesCount, &dyldTCFile);
+//     free(cdhashes);
+//     if (r == 0) {
+//         int r = trustcache_file_upload_with_uuid(dyldTCFile, DYLD_TRUSTCACHE_UUID);
+//         if (r != 0) return [NSError errorWithDomain:JBErrorDomain code:JBErrorCodeFailedInitFakeLib userInfo:@{NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Failed to upload dyld trustcache: %d", r]}];
+//         free(dyldTCFile);
+//     }
+//     else {
+//         return [NSError errorWithDomain:JBErrorDomain code:JBErrorCodeFailedInitFakeLib userInfo:@{NSLocalizedDescriptionKey : @"Failed to build dyld trustcache"}];
+//     }
     
-    r = exec_cmd(JBRootPath("/basebin/jbctl"), "internal", "fakelib_mount", NULL);
-    if (r != 0) {
-        return [NSError errorWithDomain:JBErrorDomain code:JBErrorCodeFailedInitFakeLib userInfo:@{NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Mounting fakelib failed with error: %d", r]}];
-    }
+//     r = exec_cmd(JBRootPath("/basebin/jbctl"), "internal", "fakelib_mount", NULL);
+//     if (r != 0) {
+//         return [NSError errorWithDomain:JBErrorDomain code:JBErrorCodeFailedInitFakeLib userInfo:@{NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Mounting fakelib failed with error: %d", r]}];
+//     }
     
-    // Now that fakelib is up, we want to make systemhook inject into any binary we spawn
-    setenv("DYLD_INSERT_LIBRARIES", "/usr/lib/systemhook.dylib", 1);
-    return nil;
-}
+//     // Now that fakelib is up, we want to make systemhook inject into any binary we spawn
+//     setenv("DYLD_INSERT_LIBRARIES", "/usr/lib/systemhook.dylib", 1);
+//     return nil;
+// }
 
 - (NSError *)ensureNoDuplicateApps
 {
@@ -460,11 +501,15 @@ typedef NS_ENUM(NSInteger, JBErrorCode) {
     BOOL removeJailbreakEnabled = [[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"removeJailbreakEnabled" fallback:NO];
     BOOL tweaksEnabled = [[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"tweakInjectionEnabled" fallback:YES];
     BOOL idownloadEnabled = [[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"idownloadEnabled" fallback:NO];
+    BOOL appJITEnabled = [[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"appJITEnabled" fallback:YES];
     
     *errOut = [self gatherSystemInformation];
     if (*errOut) return;
     *errOut = [self doExploitation];
     if (*errOut) return;
+    
+    gSystemInfo.jailbreakSettings.markAppsAsDebugged = appJITEnabled;
+    
     [[DOUIManager sharedInstance] sendLog:DOLocalizedString(@"Building Phys R/W Primitive") debug:NO];
     *errOut = [self buildPhysRWPrimitive];
     if (*errOut) return;
@@ -482,9 +527,6 @@ typedef NS_ENUM(NSInteger, JBErrorCode) {
     if (*errOut) return;
     *errOut = [self ensureDevModeEnabled];
     if (*errOut) return;
-
-    // Now that we are unsandboxed, populate the jailbreak root path
-    [[DOEnvironmentManager sharedManager] ensureJailbreakRootExists];
     
     if (removeJailbreakEnabled) {
         [[DOUIManager sharedInstance] sendLog:DOLocalizedString(@"Removing Jailbreak") debug:NO];
@@ -495,12 +537,13 @@ typedef NS_ENUM(NSInteger, JBErrorCode) {
     
     *errOut = [[DOEnvironmentManager sharedManager] prepareBootstrap];
     if (*errOut) return;
-    setenv("PATH", "/sbin:/bin:/usr/sbin:/usr/bin:/var/jb/sbin:/var/jb/bin:/var/jb/usr/sbin:/var/jb/usr/bin", 1);
+    
+    setenv("PATH", "/sbin:/bin:/usr/sbin:/usr/bin:/rootfs/sbin:/rootfs/bin:/rootfs/usr/sbin:/rootfs/usr/bin", 1);
     setenv("TERM", "xterm-256color", 1);
     
     if (!tweaksEnabled) {
         printf("Creating safe mode marker file since tweaks were disabled in settings\n");
-        [[NSData data] writeToFile:NSJBRootPath(@"/basebin/.safe_mode") atomically:YES];
+        [[NSData data] writeToFile:NSJBRootPath(@"/var/.safe_mode") atomically:YES];
     }
     
     [[DOUIManager sharedInstance] sendLog:DOLocalizedString(@"Loading BaseBin TrustCache") debug:NO];
@@ -511,24 +554,33 @@ typedef NS_ENUM(NSInteger, JBErrorCode) {
     *errOut = [self injectLaunchdHook];
     if (*errOut) return;
     
-    [[DOUIManager sharedInstance] sendLog:DOLocalizedString(@"Applying Bind Mount") debug:NO];
-    *errOut = [self createFakeLib];
-    if (*errOut) return;
+    // // Now that we can, protect important system files by bind mounting on top of them
+    // // This will be always be done during the userspace reboot
+    // // We also do it now though in case there is a failure between the now step and the userspace reboot
+    // [[DOUIManager sharedInstance] sendLog:DOLocalizedString(@"Initializing Protection") debug:NO];
+    // *errOut = [self applyProtection];
+    // if (*errOut) return;
     
-    // Unsandbox iconservicesagent so that app icons can work
-    exec_cmd_trusted(JBRootPath("/usr/bin/killall"), "-9", "iconservicesagent", NULL);
+    // [[DOUIManager sharedInstance] sendLog:DOLocalizedString(@"Applying Bind Mount") debug:NO];
+    // *errOut = [self createFakeLib];
+    // if (*errOut) return;
+    
+    setenv("DYLD_INSERT_LIBRARIES", JBRootPath("/basebin/systemhook.dylib"), 1);
+    
+//    // Unsandbox iconservicesagent so that app icons can work
+//    exec_cmd_trusted(JBRootPath("/usr/bin/killall"), "-9", "iconservicesagent", NULL);
     
     *errOut = [self finalizeBootstrapIfNeeded];
     if (*errOut) return;
     
     [[DOEnvironmentManager sharedManager] setIDownloadEnabled:idownloadEnabled needsUnsandbox:NO];
     
-    [[DOUIManager sharedInstance] sendLog:DOLocalizedString(@"Checking For Duplicate Apps") debug:NO];
-    *errOut = [self ensureNoDuplicateApps];
-    if (*errOut) {
-        *showLogs = NO;
-        return;
-    }
+//    [[DOUIManager sharedInstance] sendLog:DOLocalizedString(@"Checking For Duplicate Apps") debug:NO];
+//    *errOut = [self ensureNoDuplicateApps];
+//    if (*errOut) {
+//        *showLogs = NO;
+//        return;
+//    }
     
     //printf("Starting launch daemons...\n");
     //exec_cmd_trusted(JBRootPath("/usr/bin/launchctl"), "bootstrap", "system", JBRootPath("/Library/LaunchDaemons"), NULL);
