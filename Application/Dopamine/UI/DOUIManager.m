@@ -34,6 +34,7 @@
 
 - (BOOL)isUpdateAvailable
 {
+    return NO;
     NSString *latestVersion = [self getLatestReleaseTag];
     NSString *currentVersion = [self getLaunchedReleaseTag];
     return [latestVersion numericalVersionRepresentation] > [currentVersion numericalVersionRepresentation];
