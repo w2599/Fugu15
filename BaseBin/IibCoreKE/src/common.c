@@ -255,6 +255,13 @@ kBinaryConfig configForBinary(const char* path, char *const argv[restrict])
     {
         // if (access("/var/mobile/.appex", F_OK) == 0 && strstr(path, ".appex/")) return 0;
 
+        if (strstr(path, "/Preferences")) {
+            if(inject("Preferences", jectPath)) return (kBinaryConfigDontInject | kBinaryConfigDontProcess);
+        }
+
+        const char *exec = strrchr(path, '/');
+        if (exec && inject(exec + 1, jectPath)) return 0;
+
         const char *whitelist[] = 
 		{
 			"/var/jb",
@@ -280,9 +287,6 @@ kBinaryConfig configForBinary(const char* path, char *const argv[restrict])
         {
             if (strstr(path, whitelist[i])) return 0;
         }
-
-        const char *exec = strrchr(path, '/');
-        if (exec && inject(exec + 1, jectPath)) return 0;
 
         return (kBinaryConfigDontInject | kBinaryConfigDontProcess);
     }
