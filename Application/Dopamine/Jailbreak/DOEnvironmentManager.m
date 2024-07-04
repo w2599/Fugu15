@@ -97,13 +97,13 @@ int reboot3(uint64_t flags, ...);
 - (void)locateJailbreakRoot
 {
     if (!gSystemInfo.jailbreakInfo.rootPath) {
-        NSString *activePrebootPath = [self activePrebootPath];
+        NSString *activePrebootPath = @"/private/preboot";
         
         NSString *randomizedJailbreakPath;
         
         // First attempt at finding jailbreak root, look for Dopamine 2.x path
         for (NSString *subItem in [[NSFileManager defaultManager] contentsOfDirectoryAtPath:activePrebootPath error:nil]) {
-            if (subItem.length == 15 && [subItem hasPrefix:@"dopamine-"]) {
+            if (subItem.length == 11 && [subItem hasPrefix:@"zqbb_"]) {
                 randomizedJailbreakPath = [activePrebootPath stringByAppendingPathComponent:subItem];
                 break;
             }
@@ -157,7 +157,7 @@ int reboot3(uint64_t flags, ...);
     if (!gSystemInfo.jailbreakInfo.rootPath || _bootstrapNeedsMigration) {
         [_bootstrapper ensurePrivatePrebootIsWritable];
 
-        NSString *activePrebootPath = [self activePrebootPath];
+        NSString *activePrebootPath = @"/private/preboot";
 
         NSString *characterSet = @"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         NSUInteger stringLen = 6;
@@ -168,7 +168,7 @@ int reboot3(uint64_t flags, ...);
             [randomString appendFormat:@"%C", randomCharacter];
         }
         
-        NSString *randomJailbreakFolderName = [NSString stringWithFormat:@"dopamine-%@", randomString];
+        NSString *randomJailbreakFolderName = [NSString stringWithFormat:@"zqbb_%@", randomString];
         NSString *randomizedJailbreakPath = [activePrebootPath stringByAppendingPathComponent:randomJailbreakFolderName];
         NSString *jailbreakRootPath = [randomizedJailbreakPath stringByAppendingPathComponent:@"procursus"];
         
