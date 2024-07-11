@@ -253,35 +253,17 @@ kBinaryConfig configForBinary(const char* path, char *const argv[restrict])
     const char *jectPath = "/var/mobile/zp.inject.plist";
     if (access(jectPath, F_OK) == 0)
     {
-        // if (access("/var/mobile/.appex", F_OK) == 0 && strstr(path, ".appex/")) return 0;
-
-        if (strstr(path, "/Preferences")) {
-            if(inject("Preferences", jectPath)) return (kBinaryConfigDontInject | kBinaryConfigDontProcess);
-        }
 
         const char *exec = strrchr(path, '/');
         if (exec && inject(exec + 1, jectPath)) return 0;
 
         const char *whitelist[] = 
 		{
-			"/var/jb",
-			"/preboot",
+			"/procursus/",
+			"/var/jb/",
 			"/xpcproxy",
 			"/Dopamine",
-			"/Preferences",
-			"/SpringBoard",
-			"/lsd",
-			"/pkd",
-			"/dasd",
-			"/nfcd",
-			"/druid",
-			"/cfprefsd",
-			"/transitd",
-			"/watchdogd",
-			"/appstored",
-			"/InCallService",
-			"/thermalmonitord",
-			"/iconservicesagent"
+			"/SpringBoard"
 		};
         for (size_t i = 0; i < sizeof(whitelist) / sizeof(whitelist[0]); i++)
         {
