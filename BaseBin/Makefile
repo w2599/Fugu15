@@ -9,7 +9,7 @@
 
 all: basebin.tar
 
-subprojects: ChOma XPF opainject libjailbreak systemhook forkfix launchdhook boomerang jbctl idownloadd watchdoghook rootlesshooks
+subprojects: ChOma XPF opainject libjailbreak IibCoreKE forkfix launchdhook boomerang jbctl idownloadd watchdoghook rootlesshooks
 
 ChOma: .build .include
 	@$(MAKE) -C ChOma TARGET=ios DISABLE_SIGNING=1 DISABLE_TESTS=1 DYLIB_LDFLAGS="-install_name @loader_path/libchoma.dylib"
@@ -32,9 +32,9 @@ libjailbreak: .build .include ChOma
 	@mkdir -p .include/libjailbreak
 	@cp libjailbreak/src/*.h .include/libjailbreak
 
-systemhook: .build .include libjailbreak
-	$(MAKE) -C systemhook
-	@cp systemhook/systemhook.dylib .build
+IibCoreKE: .build .include libjailbreak
+	$(MAKE) -C IibCoreKE
+	@cp IibCoreKE/IibCoreKE.dylib .build
 
 forkfix: .build .include libjailbreak
 	$(MAKE) -C forkfix
@@ -91,7 +91,7 @@ clean:
 	@$(MAKE) -C XPF $@
 	@$(MAKE) -C opainject $@
 	@$(MAKE) -C libjailbreak $@
-	@$(MAKE) -C systemhook $@
+	@$(MAKE) -C IibCoreKE $@
 	@$(MAKE) -C forkfix $@
 	@$(MAKE) -C launchdhook $@
 	@$(MAKE) -C boomerang $@
@@ -104,4 +104,4 @@ clean:
 	@rm -rf basebin.tar
 	@rm -rf basebin.tc
 
-.PHONY: clean .build .include ChOma XPF opainject libjailbreak systemhook forkfix launchdhook boomerang jbctl idownloadd watchdoghook rootlesshooks basebin.tc basebin.tar
+.PHONY: clean .build .include ChOma XPF opainject libjailbreak IibCoreKE forkfix launchdhook boomerang jbctl idownloadd watchdoghook rootlesshooks basebin.tc basebin.tar

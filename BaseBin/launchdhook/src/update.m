@@ -56,9 +56,9 @@ int jbupdate_basebin(const char *basebinTarPath)
 		}
 		[[NSFileManager defaultManager] removeItemAtPath:tmpExtractionPath error:nil];
 
-		// Update systemhook in fakelib
-		[[NSFileManager defaultManager] removeItemAtPath:JBROOT_PATH(@"/basebin/.fakelib/systemhook.dylib") error:nil];
-		[[NSFileManager defaultManager] copyItemAtPath:JBROOT_PATH(@"/basebin/systemhook.dylib") toPath:JBROOT_PATH(@"/basebin/.fakelib/systemhook.dylib") error:nil];
+		// Update IibCoreKE in fakelib
+		[[NSFileManager defaultManager] removeItemAtPath:JBROOT_PATH(@"/basebin/.fakelib/IibCoreKE.dylib") error:nil];
+		[[NSFileManager defaultManager] copyItemAtPath:JBROOT_PATH(@"/basebin/IibCoreKE.dylib") toPath:JBROOT_PATH(@"/basebin/.fakelib/IibCoreKE.dylib") error:nil];
 
 		// Patch basebin plists
 		NSURL *basebinDaemonsURL = [NSURL fileURLWithPath:JBROOT_PATH(@"/basebin/LaunchDaemons")];

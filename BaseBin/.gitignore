@@ -6,7 +6,7 @@ basebin.tc
 libjailbreak/libjailbreak.dylib
 libjailbreak/libjailbreak.dylib.dSYM
 launchdhook/launchdhook.dylib
-systemhook/systemhook.dylib
+IibCoreKE/IibCoreKE.dylib
 watchdoghook/watchdoghook.dylib
 forkfix/forkfix.dylib
 

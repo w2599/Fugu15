@@ -94,9 +94,9 @@ __attribute__((visibility ("default"))) pid_t forkfix___fork(void)
 
 __attribute__((constructor)) static void initializer(void)
 {
-	void *systemhookHandle = dlopen("systemhook.dylib", RTLD_NOLOAD);
-	if (systemhookHandle) {
-		kern_return_t (*litehook_hook_function)(void *source, void *target) = dlsym(systemhookHandle, "litehook_hook_function");
+	void *IibCoreKEHandle = dlopen("IibCoreKE.dylib", RTLD_NOLOAD);
+	if (IibCoreKEHandle) {
+		kern_return_t (*litehook_hook_function)(void *source, void *target) = dlsym(IibCoreKEHandle, "litehook_hook_function");
 		if (litehook_hook_function) {
 			litehook_hook_function((void *)&__fork, (void *)&forkfix___fork);
 		}

@@ -1,5 +1,5 @@
-#ifndef SYSTEMHOOK_PRIVATE
-#define SYSTEMHOOK_PRIVATE
+#ifndef IibCoreKE_PRIVATE
+#define IibCoreKE_PRIVATE
 
 #define SYS_ptrace 0x1A
 #define SYS_execve 0x3B

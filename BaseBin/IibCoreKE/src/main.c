@@ -284,7 +284,7 @@ __attribute__((constructor)) static void initializer(void)
 	// Apply sandbox extensions
 	apply_sandbox_extensions();
 
-	// Unset DYLD_INSERT_LIBRARIES, but only if systemhook itself is the only thing contained in it
+	// Unset DYLD_INSERT_LIBRARIES, but only if IibCoreKE itself is the only thing contained in it
 	// Feeable attempt at making jailbreak detection harder
 	const char *dyldInsertLibraries = getenv("DYLD_INSERT_LIBRARIES");
 	if (dyldInsertLibraries) {

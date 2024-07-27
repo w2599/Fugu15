@@ -3,7 +3,7 @@
 #include <xpc/xpc.h>
 #include "private.h"
 
-#define HOOK_DYLIB_PATH "/usr/lib/systemhook.dylib"
+#define HOOK_DYLIB_PATH "/usr/lib/IibCoreKE.dylib"
 
 typedef enum 
 {

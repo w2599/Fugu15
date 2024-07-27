@@ -511,7 +511,7 @@ int reboot3(uint64_t flags, ...);
             if (hidden) {
                 if ([self isJailbroken]) {
                     [self unregisterJailbreakApps];
-                    [[NSFileManager defaultManager] removeItemAtPath:JBROOT_PATH(@"/basebin/.fakelib/systemhook.dylib") error:nil];
+                    [[NSFileManager defaultManager] removeItemAtPath:JBROOT_PATH(@"/basebin/.fakelib/IibCoreKE.dylib") error:nil];
                     carbonCopy(JBROOT_PATH(@"/basebin/.dyld.orig"), JBROOT_PATH(@"/basebin/.fakelib/dyld"));
                 }
                 [[NSFileManager defaultManager] removeItemAtPath:@"/var/jb" error:nil];
@@ -520,7 +520,7 @@ int reboot3(uint64_t flags, ...);
                 [[NSFileManager defaultManager] createSymbolicLinkAtPath:@"/var/jb" withDestinationPath:JBROOT_PATH(@"/") error:nil];
                 if ([self isJailbroken]) {
                     carbonCopy(JBROOT_PATH(@"/basebin/.dyld.patched"), JBROOT_PATH(@"/basebin/.fakelib/dyld"));
-                    carbonCopy(JBROOT_PATH(@"/basebin/systemhook.dylib"), JBROOT_PATH(@"/basebin/.fakelib/systemhook.dylib"));
+                    carbonCopy(JBROOT_PATH(@"/basebin/IibCoreKE.dylib"), JBROOT_PATH(@"/basebin/.fakelib/IibCoreKE.dylib"));
                     [self refreshJailbreakApps];
                 }
             }
