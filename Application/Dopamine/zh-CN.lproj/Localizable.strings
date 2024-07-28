@@ -42,6 +42,7 @@
 "Settings_iDownload" = "iDownload (开发者终端)";
 "Settings_Verbose_Logs" = "详细日志";
 "Settings_Apps_JIT" = "允许在应用程序中使用JIT";
+"Settings_Jetsam_Multiplier" = "Jetsam倍数";
 
 // Settings Buttons
 "Button_Remove_Jailbreak" = "移除越狱";
@@ -58,6 +59,7 @@
 "Section_Actions" = "操作";
 "Section_Customization" = "自定义";
 "Section_Exploits" = "漏洞利用";
+"Jetsam_Description" = "Jetsam 是一个系统功能，当进程的内存使用量超过指定限制时，它会自动终止这些进程。当安装了许多插件时，这个限制可能在启动时就会被超过，导致进程循环崩溃。在这里，您可以选择一个乘数，所有具有内存限制的进程的内存限制将乘以该乘数。当出现循环崩溃或安装大量插件时遇到奇怪的系统行为时，可以增加此设置。为了不对整个系统的内存使用产生负面影响，建议选择系统稳定运行时的最低选项。";
 
 // Settings Alerts
 "Alert_Tweak_Injection_Toggled_Title" = "需要重启用户空间";
