@@ -228,18 +228,24 @@
                 [specifiers addObject:verboseLogSpecifier];
             }
             
-            PSSpecifier *idownloadSpecifier = [PSSpecifier preferenceSpecifierNamed:DOLocalizedString(@"Settings_iDownload") target:self set:@selector(setIDownloadEnabled:specifier:) get:@selector(readIDownloadEnabled:) detail:nil cell:PSSwitchCell edit:nil];
-            [idownloadSpecifier setProperty:@YES forKey:@"enabled"];
-            [idownloadSpecifier setProperty:@"idownloadEnabled" forKey:@"key"];
-            [idownloadSpecifier setProperty:@NO forKey:@"default"];
-            [specifiers addObject:idownloadSpecifier];
+            // PSSpecifier *idownloadSpecifier = [PSSpecifier preferenceSpecifierNamed:DOLocalizedString(@"Settings_iDownload") target:self set:@selector(setIDownloadEnabled:specifier:) get:@selector(readIDownloadEnabled:) detail:nil cell:PSSwitchCell edit:nil];
+            // [idownloadSpecifier setProperty:@YES forKey:@"enabled"];
+            // [idownloadSpecifier setProperty:@"idownloadEnabled" forKey:@"key"];
+            // [idownloadSpecifier setProperty:@NO forKey:@"default"];
+            // [specifiers addObject:idownloadSpecifier];
             
             PSSpecifier *appJitSpecifier = [PSSpecifier preferenceSpecifierNamed:DOLocalizedString(@"Settings_Apps_JIT") target:self set:@selector(setAppJITEnabled:specifier:) get:@selector(readAppJITEnabled:) detail:nil cell:PSSwitchCell edit:nil];
             [appJitSpecifier setProperty:@YES forKey:@"enabled"];
             [appJitSpecifier setProperty:@"appJITEnabled" forKey:@"key"];
             [appJitSpecifier setProperty:@YES forKey:@"default"];
             [specifiers addObject:appJitSpecifier];
-            
+
+            PSSpecifier *disableUpdateSpecifier = [PSSpecifier preferenceSpecifierNamed:DOLocalizedString(@"Settings_Disable_Update") target:self set:defSetter get:defGetter detail:nil cell:PSSwitchCell edit:nil];
+            [disableUpdateSpecifier setProperty:@YES forKey:@"enabled"];
+            [disableUpdateSpecifier setProperty:@"disableUpdateEnabled" forKey:@"key"];
+            [disableUpdateSpecifier setProperty:@NO forKey:@"default"];
+            [specifiers addObject:disableUpdateSpecifier];
+
             PSSpecifier *jetsamSpecifier = [PSSpecifier preferenceSpecifierNamed:DOLocalizedString(@"Settings_Jetsam_Multiplier") target:self set:@selector(setJetsamMultiplier:specifier:) get:@selector(readJetsamMultiplier:) detail:nil cell:PSLinkListCell edit:nil];
             [jetsamSpecifier setProperty:@YES forKey:@"enabled"];
             [jetsamSpecifier setProperty:@"jetsamMultiplier" forKey:@"key"];
@@ -248,13 +254,6 @@
             [jetsamSpecifier setProperty:@"jetsamOptionNumbers" forKey:@"valuesDataSource"];
             [jetsamSpecifier setProperty:@"jetsamOptionTitles" forKey:@"titlesDataSource"];
             [specifiers addObject:jetsamSpecifier];
-            
-
-            PSSpecifier *disableUpdateSpecifier = [PSSpecifier preferenceSpecifierNamed:DOLocalizedString(@"Settings_Disable_Update") target:self set:defSetter get:defGetter detail:nil cell:PSSwitchCell edit:nil];
-            [disableUpdateSpecifier setProperty:@YES forKey:@"enabled"];
-            [disableUpdateSpecifier setProperty:@"disableUpdateEnabled" forKey:@"key"];
-            [disableUpdateSpecifier setProperty:@NO forKey:@"default"];
-            [specifiers addObject:disableUpdateSpecifier];
 
             if (!envManager.isJailbroken && !envManager.isInstalledThroughTrollStore) {
                 PSSpecifier *removeJailbreakSwitchSpecifier = [PSSpecifier preferenceSpecifierNamed:DOLocalizedString(@"Button_Remove_Jailbreak") target:self set:@selector(setRemoveJailbreakEnabled:specifier:) get:defGetter detail:nil cell:PSSwitchCell edit:nil];
