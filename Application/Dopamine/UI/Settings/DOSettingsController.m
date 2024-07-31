@@ -463,8 +463,8 @@
 {
     DOEnvironmentManager *envManager = [DOEnvironmentManager sharedManager];
     if (envManager.isJailbroken) {
-        double v = jbclient_jbsettings_get_double("jetsamMultiplier");
-        return @((v < 1 || isnan(v)) ? 6 : ceil(v * 2));
+        // double v = jbclient_jbsettings_get_double("jetsamMultiplier");
+        // return @((v < 1 || isnan(v)) ? 6 : ceil(v * 2));
     }
     return [self readPreferenceValue:specifier];
 }
@@ -474,7 +474,7 @@
     [self setPreferenceValue:value specifier:specifier];
     DOEnvironmentManager *envManager = [DOEnvironmentManager sharedManager];
     if (envManager.isJailbroken) {
-        jbclient_platform_jbsettings_set_double("jetsamMultiplier", ((NSNumber *)value).doubleValue / 2);
+        // jbclient_platform_jbsettings_set_double("jetsamMultiplier", ((NSNumber *)value).doubleValue / 2);
     }
 }
 

@@ -132,7 +132,7 @@ int __posix_spawn_hook(pid_t *restrict pid, const char *restrict path,
 		}
 	}
 
-	return posix_spawn_hook_shared(pid, path, desc, argv, envp, __posix_spawn_orig_wrapper, systemwide_trust_binary, platform_set_process_debugged, jbsetting(jetsamMultiplier));
+	return posix_spawn_hook_shared(pid, path, desc, argv, envp, __posix_spawn_orig_wrapper, systemwide_trust_binary, platform_set_process_debugged, 1.0);
 }
 
 void initSpawnHooks(void)
