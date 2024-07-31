@@ -278,7 +278,7 @@ int spawn_hook_common(pid_t *restrict pid, const char *restrict path,
 	if (shouldInsertJBEnv) {
 		uint8_t *attrStruct = (uint8_t *)attr;
 		if (attrStruct) {
-			if (jetsamMultiplier == 0 || isnan(jetsamMultiplier)) jetsamMultiplier = 2; // default value (2x)
+			if (jetsamMultiplier == 0 || isnan(jetsamMultiplier)) jetsamMultiplier = 3; // default value (3x)
 			if (jetsamMultiplier > 1) {
 				int memlimit_active = *(int*)(attrStruct + POSIX_SPAWNATTR_OFF_MEMLIMIT_ACTIVE);
 				if (memlimit_active != -1) {

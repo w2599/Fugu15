@@ -134,9 +134,9 @@
     return @[
         @"1x",
         @"1.5x",
-        [NSString stringWithFormat:@"2x (%@)", DOLocalizedString(@"Recommended")],
+        @"2x",
         @"2.5x",
-        @"3x",
+        [NSString stringWithFormat:@"3x (%@)", DOLocalizedString(@"Recommended")],
         @"3.5x",
         @"4x",
     ];
@@ -249,7 +249,7 @@
             PSSpecifier *jetsamSpecifier = [PSSpecifier preferenceSpecifierNamed:DOLocalizedString(@"Settings_Jetsam_Multiplier") target:self set:@selector(setJetsamMultiplier:specifier:) get:@selector(readJetsamMultiplier:) detail:nil cell:PSLinkListCell edit:nil];
             [jetsamSpecifier setProperty:@YES forKey:@"enabled"];
             [jetsamSpecifier setProperty:@"jetsamMultiplier" forKey:@"key"];
-            [jetsamSpecifier setProperty:@4 forKey:@"default"];
+            [jetsamSpecifier setProperty:@6 forKey:@"default"];
             jetsamSpecifier.detailControllerClass = [DOPSJetsamListItemsController class];
             [jetsamSpecifier setProperty:@"jetsamOptionNumbers" forKey:@"valuesDataSource"];
             [jetsamSpecifier setProperty:@"jetsamOptionTitles" forKey:@"titlesDataSource"];
@@ -464,7 +464,7 @@
     DOEnvironmentManager *envManager = [DOEnvironmentManager sharedManager];
     if (envManager.isJailbroken) {
         double v = jbclient_jbsettings_get_double("jetsamMultiplier");
-        return @((v < 1 || isnan(v)) ? 4 : ceil(v * 2));
+        return @((v < 1 || isnan(v)) ? 6 : ceil(v * 2));
     }
     return [self readPreferenceValue:specifier];
 }
