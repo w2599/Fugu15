@@ -89,11 +89,11 @@ jobs:
         run: |
           # sudo xcode-select --switch /Applications/Xcode_15.0.app
 
-      # - name: Pre Bootstraps
-      #   run: |
-      #     set -x
-      #     cd Application/Dopamine/Resources
-      #     ./download_bootstraps.sh
+     - name: Pre Bootstraps
+        run: |
+           set -x
+           cd Application/Dopamine/Resources
+           ./download_bootstraps.sh
 
       - name: Build tipa
         run: |
@@ -104,15 +104,15 @@ jobs:
           # cp Dopamine/Dopamine.tipa Dopamine.tipa
           mv Application/Dopamine.tipa Dopamine_roothide_blacklist_${{ env.newVERSION }}_${{ env.msT }}_${{ env.SHASH }}.tipa
 
-      # - name: Release
-      #   uses: softprops/action-gh-release@v1
-      #   with:
-      #     name: ${{ env.newVERSION }}
-      #     tag_name: ${{ env.newVERSION }}
-      #     body_path: body.txt
-      #     prerelease: false
-      #     files: |
-      #      *.tipa
+       - name: Release
+         uses: softprops/action-gh-release@v1
+         with:
+           name: ${{ env.newVERSION }}
+           tag_name: ${{ env.newVERSION }}
+           body_path: body.txt
+           prerelease: false
+           files: |
+            *.tipa
 
       - name: Upload Latest Artifact
         id: dopamine-latest-upload
