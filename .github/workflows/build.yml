@@ -102,7 +102,7 @@ jobs:
           export THEOS="${BASEDIR}/theos"
           gmake -j$(sysctl -n hw.physicalcpu) NIGHTLY=1
           # cp Dopamine/Dopamine.tipa Dopamine.tipa
-          mv Application/Dopamine.tipa Dopamine_roothide_blacklist_${{ env.newVERSION }}_${{ env.msT }}_${{ env.SHASH }}.tipa
+          mv Application/Dopamine.tipa Dopamine_roothide_${{ env.newVERSION }}.tipa
 
        - name: Release
          uses: softprops/action-gh-release@v1
