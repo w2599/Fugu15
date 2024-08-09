@@ -693,6 +693,48 @@ void loadPathFix(void)
 	});
 }
 
+int syscall__sysctlbyname(const char *name, size_t namelen, void *oldp, size_t *oldlenp, void *newp, size_t newlen);
+int __sysctlbyname(const char *name, size_t namelen, void *oldp, size_t *oldlenp, void *newp, size_t newlen);
+int __sysctlbyname_hook(const char *name, size_t namelen, void *oldp, size_t *oldlenp, void *newp, size_t newlen)
+{
+	if(name && strncmp(name, "security.mac.amfi.developer_mode_status", namelen)==0) {
+		return 1;
+	}
+	return syscall__sysctlbyname(name,namelen,oldp,oldlenp,newp,newlen);
+}
+
+#include <sys/sysctl.h>
+int cached_namelen = 0;
+int cached_name[CTL_MAXNAME+2]={0};
+int syscall__sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, const void *newp, size_t newlen);
+int __sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, const void *newp, size_t newlen);
+int __sysctl_hook(int *name, u_int namelen, void *oldp, size_t *oldlenp, const void *newp, size_t newlen)
+{
+	//https://github.com/apple-oss-distributions/Libc/blob/899a3b2d52d95d75e05fb286a5e64975ec3de757/gen/FreeBSD/sysctlbyname.c#L24
+	if(name && namelen==2 && name[0]==0 && name[1]==3) {
+		if(newp && newlen && strncmp(newp,"security.mac.amfi.developer_mode_status",newlen)==0) {
+			if(syscall__sysctl(name,namelen,oldp,oldlenp,newp,newlen)==0) {
+				if(oldp && oldlenp && *oldlenp<=sizeof(cached_name)) {
+					static dispatch_once_t onceToken;
+					dispatch_once(&onceToken, ^{
+								memcpy(cached_name, oldp, *oldlenp);
+								cached_namelen = *oldlenp / sizeof (int);
+					});
+				}
+			}
+		}
+	}
+	if(name && namelen && cached_namelen &&
+	 namelen==cached_namelen && memcmp(cached_name, name, namelen)==0) {
+		if(oldp && oldlenp) {
+			*(int*)oldp = 1;
+			*oldlenp = sizeof(int);
+			return 0;
+		}
+	}
+	return syscall__sysctl(name,namelen,oldp,oldlenp,newp,newlen);
+}
+
 char HOOK_DYLIB_PATH[PATH_MAX] = {0};
 
 __attribute__((constructor)) static void initializer(void)
@@ -747,6 +789,15 @@ __attribute__((constructor)) static void initializer(void)
 			litehook_hook_function(necp_session_action, necp_session_action_hook);
 		}
 #endif
+
+		if (__builtin_available(iOS 16.0, *)) {
+			bool is_app_path(const char* path);
+			if(!is_app_path(gExecutablePath)) {
+				gShouldFixFork = true;
+				litehook_hook_function(__sysctl, __sysctl_hook);
+				litehook_hook_function(__sysctlbyname, __sysctlbyname_hook);
+			}
+		}
 
 		dlopen_hook(JBRootPath("/usr/lib/roothidepatch.dylib"), RTLD_NOW); //require jit
 

@@ -72,6 +72,7 @@ typedef NS_ENUM(NSInteger, JBErrorCode) {
     int r = xpf_start_with_kernel_path(kernelPath.fileSystemRepresentation);
     if (r == 0) {
         char *sets[] = {
+            "namecache",
             "translation",
             "trustcache",
             "sandbox",
@@ -79,7 +80,6 @@ typedef NS_ENUM(NSInteger, JBErrorCode) {
             "struct",
             "physrw",
             "perfkrw",
-            "namecache",
             NULL,
             NULL,
             NULL,
@@ -87,7 +87,13 @@ typedef NS_ENUM(NSInteger, JBErrorCode) {
             NULL,
         };
 
-        uint32_t idx = 8;
+        uint64_t idx = -1;
+        for(int i=0;sets[i];i++) idx=i+1;
+
+        if (xpf_set_is_supported("amfi_oids")) {
+            sets[idx++] = "amfi_oids";
+        }
+
         if (xpf_set_is_supported("devmode")) {
             sets[idx++] = "devmode"; 
         }
@@ -289,6 +295,11 @@ typedef NS_ENUM(NSInteger, JBErrorCode) {
     if (@available(iOS 16.0, *)) {
         uint64_t developer_mode_storage = kread64(ksymbol(developer_mode_enabled));
         kwrite8(developer_mode_storage, 1);
+
+        uint64_t launch_env_logging = kread64(ksymbol(launch_env_logging));
+        uint64_t developer_mode_status = kread64(ksymbol(developer_mode_status));
+        kwrite64(ksymbol(launch_env_logging), developer_mode_status);
+        kwrite64(ksymbol(developer_mode_status), launch_env_logging);
     }
     return nil;
 }

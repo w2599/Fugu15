@@ -129,6 +129,7 @@ void jbupdate_update_system_info(void)
 				"physrw",
 				"perfkrw",
                 "namecache",
+				"amfi_oids",
 				NULL,
 				NULL,
 				NULL,

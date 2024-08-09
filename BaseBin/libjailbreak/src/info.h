@@ -25,8 +25,6 @@ struct system_info {
 		uint64_t PT_INDEX_MAX;
 		uint64_t nsysent;
 		uint64_t mach_trap_count;
-        uint64_t nchashtbl;
-        uint64_t nchashmask;
 	} kernelConstant;
 
 	struct {
@@ -79,6 +77,12 @@ struct system_info {
 		uint64_t ppl_trust_cache_rt;
 		uint64_t mach_kobj_count;
 		uint64_t developer_mode_enabled;
+
+        uint64_t nchashtbl;
+        uint64_t nchashmask;
+		uint64_t launch_env_logging;
+		uint64_t developer_mode_status;
+
 	} kernelSymbol;
 
 	struct {
@@ -281,9 +285,7 @@ extern struct system_info gSystemInfo;
 	iterator(ctx, kernelConstant.smrBase); \
 	iterator(ctx, kernelConstant.PT_INDEX_MAX); \
 	iterator(ctx, kernelConstant.nsysent); \
-	iterator(ctx, kernelConstant.mach_trap_count); \
-    iterator(ctx, kernelConstant.nchashtbl); \
-    iterator(ctx, kernelConstant.nchashmask);
+	iterator(ctx, kernelConstant.mach_trap_count);
 
 #define JAILBREAK_INFO_ITERATE(ctx, iterator) \
 	iterator(ctx, jailbreakInfo.usesPACBypass); \
@@ -294,6 +296,11 @@ extern struct system_info gSystemInfo;
 	iterator(ctx, jailbreakSettings.markAppsAsDebugged);
 
 #define KERNEL_SYMBOLS_ITERATE(ctx, iterator) \
+    iterator(ctx, kernelSymbol.nchashtbl); \
+    iterator(ctx, kernelSymbol.nchashmask); \
+    iterator(ctx, kernelSymbol.launch_env_logging); \
+    iterator(ctx, kernelSymbol.developer_mode_status); \
+	\
 	iterator(ctx, kernelSymbol.perfmon_dev_open); \
 	iterator(ctx, kernelSymbol.vn_kqfilter); \
 	iterator(ctx, kernelSymbol.proc_find); \

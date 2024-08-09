@@ -9,6 +9,7 @@ CFLAGS += -DENABLE_LOGS
 endif
 
 sign: $(TARGET)
+	@strip -N $^
 	@ldid -S $^
 
 $(TARGET): $(wildcard src/*.c src/*.m src/*.S ../libjailbreak/src/jbclient_xpc.c ../forkfix/src/litehook.c)
