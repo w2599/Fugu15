@@ -120,3 +120,5 @@
 "Button_Delete" = "Xoá";
 "Button_View" = "Mở trong Filza";
 "Button_Mount" = "Xác nhận";
+"System_Uptime_Format" = " %d Ngày %d Giờ %d phút %d giây";
+"Settings_Disable_Update" = "Tắt cập nhật Dopamine";
