@@ -604,7 +604,7 @@
 - (void)unmountPressed
 {
     // 读取plist文件中的路径数组
-    NSString *plistPath = @"/var/mobile/newFakePath_RH.plist";
+    NSString *plistPath = @"/var/mobile/PathMount_RH.plist";
     NSMutableDictionary *plist = [NSMutableDictionary dictionaryWithContentsOfFile:plistPath];
     NSMutableArray *paths = [plist[@"path"] mutableCopy];
     
