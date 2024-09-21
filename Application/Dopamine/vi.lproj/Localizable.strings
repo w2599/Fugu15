@@ -111,3 +111,12 @@
 "Status_Title_Select_Package_Managers" = "Chọn trình quản lý gói";
 "Select_Package_Managers_Install_Message" = "Nếu bạn không biết nên nhấn vào lựa chọn nào, hãy chọn Sileo (sẽ không bao giờ có Cydia cho bạn chọn)";
 "Continue" = "Tiếp tục";
+// mount 
+"Input_Mmount_Title" = "Mount";
+"Input_Unmount_Title" = "Quản lí Mount";
+"Input_Mount_Title" = "Nhập đường dẫn gốc";
+"Select_Mount_Title" = "Chọn đường dẫn";
+"Button_Delete_Path_Only" = "Chỉ xoá đường dẫn";
+"Button_Delete" = "Xoá";
+"Button_View" = "Mở trong Filza";
+"Button_Mount" = "Xác nhận";
