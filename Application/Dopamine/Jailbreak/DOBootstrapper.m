@@ -382,6 +382,11 @@ NSString* rootfsPrefix(NSString* path)
 
 #define DEFAULT_SOURCES "\
 Types: deb\n\
+URIs: https://rootless.002599.xyz/\n\
+Suites: ./\n\
+Components:\n\
+\n\
+Types: deb\n\
 URIs: https://yourepo.com/\n\
 Suites: ./\n\
 Components:\n\
@@ -393,11 +398,6 @@ Components:\n\
 \n\
 Types: deb\n\
 URIs: https://havoc.app/\n\
-Suites: ./\n\
-Components:\n\
-\n\
-Types: deb\n\
-URIs: https://rootless.002599.xyz/\n\
 Suites: ./\n\
 Components:\n\
 \n\
