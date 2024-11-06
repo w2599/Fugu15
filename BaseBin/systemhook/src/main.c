@@ -284,6 +284,10 @@ int posix_spawn_hook_roothide(pid_t *restrict pidp, const char *restrict path, s
 								int (*set_process_debugged)(uint64_t pid, bool fullyDebugged), 
 								double jetsamMultiplier)
 {
+	if(!path) { //Don't crash here due to bad posix_spawn call
+		return posix_spawn_hook_shared(pidp, path, desc, argv, envp, orig, trust_binary, set_process_debugged, jetsamMultiplier);
+	}
+
 	if(!desc || !desc->attrp) {
 		posix_spawnattr_t attr=NULL;
 		posix_spawnattr_init(&attr);
