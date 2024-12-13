@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <dlfcn.h>
 #include <os/log.h>
+#include <util.h>
 #include "syscall.h"
 #include "litehook.h"
 #include <libjailbreak/jbclient_xpc.h>
@@ -92,13 +93,63 @@ __attribute__((visibility ("default"))) pid_t forkfix___fork(void)
 	return pid;
 }
 
+void apply_fork_hook(void)
+{
+	static dispatch_once_t onceToken;
+	dispatch_once (&onceToken, ^{
+		void *systemhookHandle = dlopen("systemhook.dylib", RTLD_NOLOAD);
+		if (systemhookHandle) {
+			kern_return_t (*litehook_hook_function)(void *source, void *target) = dlsym(systemhookHandle, "litehook_hook_function");
+			if (litehook_hook_function) {
+				litehook_hook_function((void *)__fork, (void *)forkfix___fork);
+			}
+		}
+	});
+}
+
+// iOS 15 arm64e wrappers
+// Only apply fork hook when something actually calls it
+int fork_hook(void)
+{
+	apply_fork_hook();
+	return fork();
+}
+int vfork_hook(void)
+{
+	apply_fork_hook();
+	return vfork();
+}
+pid_t forkpty_hook(int *amaster, char *name, struct termios *termp, struct winsize *winp)
+{
+	apply_fork_hook();
+	return forkpty(amaster, name, termp, winp);
+}
+int daemon_hook(int __nochdir, int __noclose)
+{
+	apply_fork_hook();
+	return daemon(__nochdir, __noclose);
+}
+
 __attribute__((constructor)) static void initializer(void)
 {
-	void *systemhookHandle = dlopen("systemhook.dylib", RTLD_NOLOAD);
-	if (systemhookHandle) {
-		kern_return_t (*litehook_hook_function)(void *source, void *target) = dlsym(systemhookHandle, "litehook_hook_function");
-		if (litehook_hook_function) {
-			litehook_hook_function((void *)&__fork, (void *)&forkfix___fork);
+#ifdef __arm64e__
+	if (__builtin_available(iOS 16.0, *)) { /* fall through */ }
+	else {
+		void *systemhookHandle = dlopen("systemhook.dylib", RTLD_NOLOAD);
+		if (systemhookHandle) {
+			// On iOS 15 arm64e, instead of using instruction replacements, rebind __fork instead
+			// Less instruction replacements = Less spinlock panics
+			kern_return_t (*litehook_rebind_symbol_globally)(void *source, void *target) = dlsym(systemhookHandle, "litehook_rebind_symbol_globally");
+			if (litehook_rebind_symbol_globally) {
+				litehook_rebind_symbol_globally((void *)fork, (void *)fork_hook);
+				litehook_rebind_symbol_globally((void *)vfork, (void *)vfork_hook);
+				litehook_rebind_symbol_globally((void *)forkpty, (void *)forkpty_hook);
+				litehook_rebind_symbol_globally((void *)daemon, (void *)daemon_hook);
+			}
 		}
+		return;
 	}
+#endif
+
+	apply_fork_hook();
 }
