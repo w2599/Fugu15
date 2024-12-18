@@ -96,7 +96,7 @@ static kSpawnConfig spawn_config_for_executable(const char* path, char *const ar
 			if (argv[0]) {
 				if (argv[1]) {
 					if (string_has_prefix(argv[1], "com.apple.WebKit.WebContent")) {
-						// The most sandboxed process on the system, we can't support it on iOS 16+ for now
+						// The most sandboxed process on the system, we can't support injection into it on iOS 16+ for now
 						if (__builtin_available(iOS 16.0, *)) {
 							return 0;
 						}
@@ -368,7 +368,7 @@ int posix_spawn_hook_shared(pid_t *restrict pid,
 {
 	int (*posix_spawn_orig)(pid_t *restrict, const char *restrict, struct _posix_spawn_args_desc *, char *const[restrict], char *const[restrict]) = orig;
 
-	int r = spawn_exec_hook_common(path, argv, envp, desc, trust_binary, jetsamMultiplier, ^int(char *const envp_patched[restrict]){
+	int r = spawn_exec_hook_common(path, argv, envp, desc, trust_binary, jetsamMultiplier, ^int(char *const envp_patched[restrict]) {
 		return posix_spawn_orig(pid, path, desc, argv, envp_patched);
 	});
 
